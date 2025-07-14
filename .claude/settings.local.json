@@ -21,7 +21,8 @@
       "Bash(pip install:*)",
       "Bash(streamlit run:*)",
       "Bash(pkill:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

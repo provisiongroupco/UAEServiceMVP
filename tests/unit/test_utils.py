@@ -42,13 +42,13 @@ class TestUtils(unittest.TestCase):
     def test_halton_colors(self):
         """Test that Halton brand colors are properly defined"""
         # Test HALTON_BLUE
-        self.assertEqual(HALTON_BLUE.rgb, (31, 71, 136))
+        self.assertEqual(str(HALTON_BLUE).lower(), '1f4788')
         
         # Test HALTON_LIGHT_BLUE
-        self.assertEqual(HALTON_LIGHT_BLUE.rgb, (44, 90, 160))
+        self.assertEqual(str(HALTON_LIGHT_BLUE).lower(), '2c5aa0')
         
         # Test HALTON_DARK_GRAY
-        self.assertEqual(HALTON_DARK_GRAY.rgb, (64, 64, 64))
+        self.assertEqual(str(HALTON_DARK_GRAY).lower(), '404040')
     
     @patch('utils.os.path.exists')
     def test_add_header_with_logo_no_logo(self, mock_exists):
@@ -304,13 +304,16 @@ class TestUtilsIntegration(unittest.TestCase):
     
     def test_color_consistency(self):
         """Test that colors are consistent across the application"""
-        # Test that all colors are RGB color objects
+        # Test that all colors are RGBColor objects with proper values
         colors = [HALTON_BLUE, HALTON_LIGHT_BLUE, HALTON_DARK_GRAY]
         
         for color in colors:
-            self.assertTrue(hasattr(color, 'rgb'))
-            self.assertEqual(len(color.rgb), 3)
-            for component in color.rgb:
+            # Check that it's an RGBColor object (iterable with 3 components)
+            self.assertEqual(len(color), 3)
+            
+            # Check that color components are valid integers 0-255
+            rgb_values = list(color)
+            for component in rgb_values:
                 self.assertIsInstance(component, int)
                 self.assertGreaterEqual(component, 0)
                 self.assertLessEqual(component, 255)

@@ -332,9 +332,18 @@ class TestAppCore(unittest.TestCase):
     @patch('app.st')
     def test_render_checklist_item_with_conditions(self, mock_st):
         """Test rendering checklist item with conditions"""
-        # Setup mock streamlit
-        mock_st.selectbox.return_value = 'No'
-        mock_st.session_state = {}
+        # Setup mock streamlit with proper session state simulation
+        mock_session_state = {}
+        mock_st.session_state = mock_session_state
+        
+        # Mock the selectbox to both return 'No' and update session state
+        def mock_selectbox(*args, **kwargs):
+            widget_key = kwargs.get('key', 'default_key')
+            mock_session_state[widget_key] = 'No'
+            return 'No'
+        
+        mock_selectbox_spy = MagicMock(side_effect=mock_selectbox)
+        mock_st.selectbox = mock_selectbox_spy
         mock_st.file_uploader.return_value = None
         mock_st.text_area.return_value = 'Test comment'
         mock_st.warning = MagicMock()

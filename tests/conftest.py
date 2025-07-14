@@ -57,12 +57,35 @@ def test_photo():
     return create_test_photo()
 
 
+class MockSessionState(dict):
+    """Mock session state that behaves like a dictionary with attribute access"""
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError(f"'MockSessionState' object has no attribute '{name}'")
+    
+    def __setattr__(self, name, value):
+        self[name] = value
+
+
 @pytest.fixture
 def mock_streamlit():
     """Fixture providing mock Streamlit"""
     with patch('streamlit') as mock_st:
+        # Setup session state with proper attribute access
+        mock_st.session_state = MockSessionState({
+            'kitchen_list': [],
+            'equipment_list': [],
+            'current_equipment_index': 0,
+            'inspection_data': {},
+            'report_data': {},
+            'report_generated': False,
+            'technician_signature': None,
+            'form_data': {}
+        })
+        
         # Setup common streamlit mocks
-        mock_st.session_state = {}
         mock_st.selectbox = MagicMock(return_value='Yes')
         mock_st.text_input = MagicMock(return_value='Test input')
         mock_st.text_area = MagicMock(return_value='Test area')
@@ -85,6 +108,7 @@ def mock_streamlit():
         mock_st.date_input = MagicMock(return_value=None)
         mock_st.rerun = MagicMock()
         mock_st.stop = MagicMock()
+        mock_st.write = MagicMock()
         
         yield mock_st
 

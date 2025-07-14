@@ -15,13 +15,21 @@ from equipment_config import (
 
 class EquipmentInspection:
     def __init__(self):
-        # Initialize session state for equipment
-        if 'equipment_list' not in st.session_state:
-            st.session_state.equipment_list = []
-        if 'current_equipment_index' not in st.session_state:
-            st.session_state.current_equipment_index = 0
-        if 'inspection_data' not in st.session_state:
-            st.session_state.inspection_data = {}
+        # Initialize session state for kitchen-based equipment structure
+        # Handle both attribute access and dictionary access for testing compatibility
+        self._init_session_state_item('kitchen_list', [])
+        self._init_session_state_item('equipment_list', [])
+        self._init_session_state_item('current_equipment_index', 0)
+        self._init_session_state_item('inspection_data', {})
+    
+    def _init_session_state_item(self, key, default_value):
+        """Initialize a session state item safely for both dict and attribute access"""
+        if hasattr(st.session_state, key):
+            # Already exists
+            return
+        elif key not in st.session_state:
+            # Initialize using dict access (works for both dict and attribute access)
+            st.session_state[key] = default_value
     
     def render_equipment_section(self):
         """Render the main equipment inspection section"""
@@ -43,29 +51,29 @@ class EquipmentInspection:
                 self.add_equipment(equipment_type)
         
         with col3:
-            if st.session_state.equipment_list and st.button("🗑️ Remove Last", type="secondary"):
+            if st.session_state.get('equipment_list', []) and st.button("🗑️ Remove Last", type="secondary"):
                 self.remove_last_equipment()
         
         # Display equipment list
-        if st.session_state.equipment_list:
+        if st.session_state.get('equipment_list', []):
             st.markdown("#### Equipment Added:")
-            for idx, equip in enumerate(st.session_state.equipment_list):
+            for idx, equip in enumerate(st.session_state.get('equipment_list', [])):
                 col1, col2 = st.columns([4, 1])
                 with col1:
                     st.text(f"{idx + 1}. {EQUIPMENT_TYPES[equip['type']]['name']} - {equip['serial_number']}")
                 with col2:
                     if st.button(f"Edit", key=f"edit_equip_{idx}"):
-                        st.session_state.current_equipment_index = idx
+                        st.session_state['current_equipment_index'] = idx
             
             # Render current equipment inspection form
-            if st.session_state.current_equipment_index < len(st.session_state.equipment_list):
-                self.render_equipment_form(st.session_state.current_equipment_index)
+            if st.session_state.get('current_equipment_index', 0) < len(st.session_state.get('equipment_list', [])):
+                self.render_equipment_form(st.session_state.get('current_equipment_index', 0))
         else:
             st.info("No equipment added yet. Click 'Add Equipment' to start.")
     
     def add_equipment(self, equipment_type):
         """Add a new equipment to the inspection list"""
-        equipment_id = f"{equipment_type}_{len(st.session_state.equipment_list)}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        equipment_id = f"{equipment_type}_{len(st.session_state.get('equipment_list', []))}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
         
         new_equipment = {
             'id': equipment_id,
@@ -76,21 +84,23 @@ class EquipmentInspection:
             'photos': {}
         }
         
-        st.session_state.equipment_list.append(new_equipment)
-        st.session_state.current_equipment_index = len(st.session_state.equipment_list) - 1
+        if 'equipment_list' not in st.session_state:
+            st.session_state['equipment_list'] = []
+        st.session_state['equipment_list'].append(new_equipment)
+        st.session_state['current_equipment_index'] = len(st.session_state.get('equipment_list', [])) - 1
         st.success(f"Added {EQUIPMENT_TYPES[equipment_type]['name']} to inspection list")
     
     def remove_last_equipment(self):
         """Remove the last equipment from the list"""
-        if st.session_state.equipment_list:
-            removed = st.session_state.equipment_list.pop()
+        if st.session_state.get('equipment_list', []):
+            removed = st.session_state['equipment_list'].pop()
             st.success(f"Removed {EQUIPMENT_TYPES[removed['type']]['name']}")
-            if st.session_state.current_equipment_index >= len(st.session_state.equipment_list):
-                st.session_state.current_equipment_index = max(0, len(st.session_state.equipment_list) - 1)
+            if st.session_state.get('current_equipment_index', 0) >= len(st.session_state.get('equipment_list', [])):
+                st.session_state['current_equipment_index'] = max(0, len(st.session_state.get('equipment_list', [])) - 1)
     
     def render_equipment_form(self, index):
         """Render the inspection form for a specific equipment"""
-        equipment = st.session_state.equipment_list[index]
+        equipment = st.session_state.get('equipment_list', [])[index]
         equipment_type = equipment['type']
         equipment_config = EQUIPMENT_TYPES[equipment_type]
         
@@ -341,7 +351,7 @@ class EquipmentInspection:
         """Get a summary of all equipment inspections"""
         summary = []
         
-        for equipment in st.session_state.equipment_list:
+        for equipment in st.session_state.get('equipment_list', []):
             equip_summary = {
                 'type': equipment['type'],
                 'type_name': EQUIPMENT_TYPES[equipment['type']]['name'],
@@ -371,7 +381,7 @@ class EquipmentInspection:
         """Validate that all required equipment data is filled"""
         errors = []
         
-        for idx, equipment in enumerate(st.session_state.equipment_list):
+        for idx, equipment in enumerate(st.session_state.get('equipment_list', [])):
             equip_name = f"{EQUIPMENT_TYPES[equipment['type']]['name']} #{idx + 1}"
             
             if not equipment.get('serial_number'):
