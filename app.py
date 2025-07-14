@@ -12,6 +12,7 @@ from streamlit_drawable_canvas import st_canvas
 import numpy as np
 from utils import (add_header_with_logo, add_footer, style_heading, 
                   create_info_table, add_logo_to_doc, set_cell_margins)
+from equipment_inspection import equipment_inspector
 
 # Page configuration
 st.set_page_config(
@@ -119,15 +120,40 @@ def create_technical_report(data):
     create_info_table(doc, general_info)
     doc.add_paragraph()  # Add spacing
     
-    # EQUIPMENT DETAILS SECTION
-    equipment_heading = doc.add_heading('2. EQUIPMENT DETAILS', level=1)
+    # EQUIPMENT INSPECTION SECTION
+    equipment_heading = doc.add_heading('2. EQUIPMENT INSPECTION DETAILS', level=1)
     style_heading(equipment_heading, level=1)
     
-    equipment_para = doc.add_paragraph()
-    equipment_text = equipment_para.add_run(data.get('equipment_details', ''))
-    equipment_text.font.size = Pt(11)
-    equipment_para.paragraph_format.line_spacing = 1.5
-    equipment_para.paragraph_format.space_after = Pt(12)
+    equipment_summary = data.get('equipment_inspection', [])
+    
+    if equipment_summary:
+        for idx, equip in enumerate(equipment_summary):
+            # Equipment header
+            equip_title = doc.add_heading(f"{equip['type_name']} - {equip['serial_number']}", level=2)
+            style_heading(equip_title, level=2)
+            
+            # Equipment info
+            equip_info_para = doc.add_paragraph()
+            equip_info_para.add_run(f"Location: {equip['location']}\n").font.size = Pt(11)
+            equip_info_para.add_run(f"Photos Taken: {equip['photos_count']}\n").font.size = Pt(11)
+            
+            # Issues found
+            if equip['issues_found']:
+                issues_para = doc.add_paragraph()
+                issues_para.add_run("Issues Identified:\n").bold = True
+                for issue in equip['issues_found']:
+                    issue_text = f"• {issue['item'].replace('_', ' ').title()}: {issue['answer']}"
+                    if issue['comment']:
+                        issue_text += f" - {issue['comment']}"
+                    issues_para.add_run(issue_text + "\n").font.size = Pt(10)
+            else:
+                doc.add_paragraph("No issues identified during inspection.").font.size = Pt(11)
+            
+            # Add spacing between equipment
+            if idx < len(equipment_summary) - 1:
+                doc.add_paragraph()
+    else:
+        doc.add_paragraph("No equipment inspection data available.")
     
     # WORK PERFORMED SECTION
     work_heading = doc.add_heading('3. WORK PERFORMED', level=1)
@@ -283,20 +309,21 @@ def main():
         
         with col2:
             contact_number = st.text_input("Contact #*", placeholder="e.g., +966 55 558 5449")
-            visit_type = st.text_input("Visit Type*", placeholder="e.g., Servicing/Preventive Maintenance")
+            visit_type = st.selectbox(
+                "Visit Type*",
+                ["", "Servicing/Preventive Maintenance", "AMC (Contract)", "Emergency Service", "Installation", "Commissioning"]
+            )
+            # Store visit type in session state for equipment inspection
+            st.session_state.visit_type = visit_type
+            
             visit_class = st.selectbox(
                 "Visit Class*",
                 ["To be invoiced (Chargeable)", "Warranty", "Complaint", "Scheduled Maintenance", "Emergency Service"]
             )
             date = st.date_input("Report Date", value=datetime.now())
         
-        # Equipment Details Section
-        st.markdown("### Equipment Details")
-        equipment_details = st.text_area(
-            "Equipment Details and Description*",
-            placeholder="Enter equipment model, serial number, and any relevant details...",
-            height=100
-        )
+        # Equipment Inspection Section
+        equipment_inspector.render_equipment_section()
         
         # Work Performed Section
         st.markdown("### Work Performed")
@@ -378,7 +405,6 @@ def main():
                 "Outlet/Location": outlet_location,
                 "Contact Number": contact_number,
                 "Visit Type": visit_type,
-                "Equipment Details": equipment_details,
                 "Work Performed": work_performed,
                 "Findings": findings,
                 "Technician Name": technician_name,
@@ -387,8 +413,15 @@ def main():
             
             missing_fields = [field for field, value in required_fields.items() if not value]
             
+            # Validate equipment data
+            equipment_errors = equipment_inspector.validate_equipment_data()
+            
             if missing_fields:
                 st.error(f"Please fill in the following required fields: {', '.join(missing_fields)}")
+            elif not st.session_state.equipment_list:
+                st.error("Please add at least one equipment for inspection")
+            elif equipment_errors:
+                st.error("Equipment inspection errors:\n" + "\n".join(f"• {error}" for error in equipment_errors))
             else:
                 # Process signature from canvas
                 signature_img = None
@@ -426,7 +459,8 @@ def main():
                     'visit_type': visit_type,
                     'visit_class': visit_class,
                     'date': date.strftime('%Y-%m-%d'),
-                    'equipment_details': equipment_details,
+                    'equipment_inspection': equipment_inspector.get_inspection_summary(),
+                    'equipment_list': st.session_state.equipment_list,
                     'work_performed': work_performed,
                     'findings': findings,
                     'recommendations': recommendations,
