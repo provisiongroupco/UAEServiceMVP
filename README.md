@@ -7,10 +7,10 @@ This is a Streamlit-based MVP application for Halton KSA's service team to gener
 - **Report Type Selection**: Currently supports Technical Reports (with more types coming soon)
 - **Dynamic Form Interface**: Adaptive form fields based on report type
 - **Digital Signature Capability**: 
-  - Upload signature images (PNG, JPG, JPEG)
-  - Includes standalone HTML signature pad for creating signatures
+  - Draw signatures directly in the application using canvas
+  - Touch-screen and mouse compatible
   - Signatures are embedded in the final Word document
-  - Touch-screen compatible for mobile devices
+  - Clear button to reset and redraw
 - **Professional Document Generation**: 
   - Exports reports as professionally formatted Word documents
   - Includes Halton branding and color scheme
@@ -59,7 +59,7 @@ This is a Streamlit-based MVP application for Halton KSA's service team to gener
    - **Findings**: Observations and issues discovered
    - **Recommendations**: Suggested follow-up actions
    - **Technician Information**: Your name and ID
-   - **Digital Signature**: Upload a signature image or create one using the provided signature pad
+   - **Digital Signature**: Draw your signature directly on the canvas using mouse or touchscreen
 
 3. **Generate Report**: Click the "Generate Report" button at the bottom of the form
 
