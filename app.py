@@ -9,8 +9,7 @@ import os
 from PIL import Image
 from streamlit_drawable_canvas import st_canvas
 import numpy as np
-from utils import (add_header_with_logo, add_footer, style_heading, 
-                  create_info_table, add_logo_to_doc, set_cell_margins)
+from utils import (style_heading, create_info_table, set_cell_margins)
 from equipment_config import EQUIPMENT_TYPES
 
 # Page configuration
@@ -84,13 +83,13 @@ if 'report_generated' not in st.session_state:
     st.session_state.report_generated = False
 if 'technician_signature' not in st.session_state:
     st.session_state.technician_signature = None
-if 'equipment_list' not in st.session_state:
-    st.session_state.equipment_list = []
+if 'kitchen_list' not in st.session_state:
+    st.session_state.kitchen_list = []
 if 'form_data' not in st.session_state:
     st.session_state.form_data = {}
 
 
-def render_checklist_item(equipment, item, equip_idx, prefix=""):
+def render_checklist_item(equipment, item, equip_key_prefix, prefix=""):
     """Recursively render a checklist item with all its conditional logic"""
     item_key = prefix + item['id']
     
@@ -109,7 +108,7 @@ def render_checklist_item(equipment, item, equip_idx, prefix=""):
     
     if question_type == 'yes_no':
         options = ['', 'Yes', 'No']
-        widget_key = f"q_{item_key}_{equip_idx}"
+        widget_key = f"q_{item_key}_{equip_key_prefix}"
         
         # Initialize session state if not exists
         if widget_key not in st.session_state:
@@ -120,12 +119,12 @@ def render_checklist_item(equipment, item, equip_idx, prefix=""):
             options=options,
             key=widget_key
         )
-        # Update from session state
-        st.session_state.equipment_list[equip_idx]['inspection_data'][item_key]['answer'] = st.session_state[widget_key]
+        # Update equipment object directly
+        equipment['inspection_data'][item_key]['answer'] = st.session_state[widget_key]
         
     elif question_type == 'yes_no_na':
         options = ['', 'Yes', 'No', 'N/A']
-        widget_key = f"q_{item_key}_{equip_idx}"
+        widget_key = f"q_{item_key}_{equip_key_prefix}"
         
         # Initialize session state if not exists
         if widget_key not in st.session_state:
@@ -136,11 +135,11 @@ def render_checklist_item(equipment, item, equip_idx, prefix=""):
             options=options,
             key=widget_key
         )
-        # Update from session state
-        st.session_state.equipment_list[equip_idx]['inspection_data'][item_key]['answer'] = st.session_state[widget_key]
+        # Update equipment object directly
+        equipment['inspection_data'][item_key]['answer'] = st.session_state[widget_key]
         
     elif question_type == 'text':
-        widget_key = f"q_{item_key}_{equip_idx}"
+        widget_key = f"q_{item_key}_{equip_key_prefix}"
         
         # Initialize session state if not exists
         if widget_key not in st.session_state:
@@ -150,11 +149,11 @@ def render_checklist_item(equipment, item, equip_idx, prefix=""):
             question,
             key=widget_key
         )
-        # Update from session state
-        st.session_state.equipment_list[equip_idx]['inspection_data'][item_key]['answer'] = st.session_state[widget_key]
+        # Update equipment object directly
+        equipment['inspection_data'][item_key]['answer'] = st.session_state[widget_key]
         
     elif question_type == 'number':
-        widget_key = f"q_{item_key}_{equip_idx}"
+        widget_key = f"q_{item_key}_{equip_key_prefix}"
         
         # Initialize session state if not exists
         if widget_key not in st.session_state:
@@ -166,13 +165,13 @@ def render_checklist_item(equipment, item, equip_idx, prefix=""):
             step=1,
             key=widget_key
         )
-        # Update from session state
-        st.session_state.equipment_list[equip_idx]['inspection_data'][item_key]['answer'] = st.session_state[widget_key]
+        # Update equipment object directly
+        equipment['inspection_data'][item_key]['answer'] = st.session_state[widget_key]
     else:
         answer = None
     
     # Get answer from updated data for conditional logic
-    answer = st.session_state.equipment_list[equip_idx]['inspection_data'][item_key].get('answer', '')
+    answer = equipment['inspection_data'][item_key].get('answer', '')
     
     # Handle conditional logic based on answer
     if answer and 'conditions' in item:
@@ -189,7 +188,7 @@ def render_checklist_item(equipment, item, equip_idx, prefix=""):
                 uploaded_files = st.file_uploader(
                     f"📷 Upload photo(s) for: {question}",
                     type=['png', 'jpg', 'jpeg'],
-                    key=f"photo_{item_key}_{equip_idx}",
+                    key=f"photo_{item_key}_{equip_key_prefix}",
                     accept_multiple_files=True
                 )
                 if uploaded_files:
@@ -205,7 +204,7 @@ def render_checklist_item(equipment, item, equip_idx, prefix=""):
             
             # Handle comment requirement
             if condition.get('comment'):
-                comment_key = f"comment_{item_key}_{equip_idx}"
+                comment_key = f"comment_{item_key}_{equip_key_prefix}"
                 
                 # Initialize session state if not exists
                 if comment_key not in st.session_state:
@@ -216,7 +215,7 @@ def render_checklist_item(equipment, item, equip_idx, prefix=""):
                     key=comment_key,
                     height=100
                 )
-                st.session_state.equipment_list[equip_idx]['inspection_data'][item_key]['comment'] = st.session_state[comment_key]
+                equipment['inspection_data'][item_key]['comment'] = st.session_state[comment_key]
             
             # Handle action instruction
             if condition.get('action'):
@@ -230,7 +229,7 @@ def render_checklist_item(equipment, item, equip_idx, prefix=""):
                     _, col2 = st.columns([0.05, 0.95])
                     with col2:
                         for follow_up_item in condition['follow_up']:
-                            render_checklist_item(equipment, follow_up_item, equip_idx, prefix)
+                            render_checklist_item(equipment, follow_up_item, equip_key_prefix, prefix)
 
 
 def find_question_text(equipment_type, item_key):
@@ -270,78 +269,115 @@ def find_question_text(equipment_type, item_key):
     return item_key.replace('_', ' ').title()
 
 
-def get_equipment_summary():
-    """Get a summary of all equipment inspections"""
+def get_kitchen_summary():
+    """Get a summary of all kitchen and equipment inspections"""
     summary = []
     
-    for equipment in st.session_state.equipment_list:
-        if equipment.get('type'):  # Only include equipment with a selected type
-            equip_summary = {
-                'type': equipment['type'],
-                'type_name': EQUIPMENT_TYPES[equipment['type']]['name'],
-                'with_marvel': equipment.get('with_marvel', False),
-                'location': equipment.get('location', ''),
-                'yes_responses': [],
-                'no_responses': [],
-                'photos_count': len(equipment.get('photos', {})),
-                'inspection_data': equipment.get('inspection_data', {}),
-                'photos': equipment.get('photos', {}),
-                'yes_photos': {},
-                'no_photos': {}
-            }
+    for kitchen in st.session_state.kitchen_list:
+        kitchen_summary = {
+            'name': kitchen.get('name', 'Unknown Kitchen'),
+            'equipment': []
+        }
+        
+        for equipment in kitchen.get('equipment_list', []):
+            if equipment.get('type'):  # Only include equipment with a selected type
+                equip_summary = {
+                    'type': equipment['type'],
+                    'type_name': EQUIPMENT_TYPES[equipment['type']]['name'],
+                    'with_marvel': equipment.get('with_marvel', False),
+                    'location': equipment.get('location', ''),
+                    'yes_responses': [],
+                    'no_responses': [],
+                    'photos_count': len(equipment.get('photos', {})),
+                    'inspection_data': equipment.get('inspection_data', {}),
+                    'photos': equipment.get('photos', {}),
+                    'yes_photos': {},
+                    'no_photos': {}
+                }
+                
+                # Define items to exclude from No responses (these are not issues)
+                exclude_from_no = ['final_remarks', 'lights_ballast']
             
-            # Define items to exclude from No responses (these are not issues)
-            exclude_from_no = ['final_remarks', 'lights_ballast']
-            
-            # Separate Yes and No responses
-            for key, data in equipment.get('inspection_data', {}).items():
-                if isinstance(data, dict):
-                    answer = data.get('answer', '')
-                    # Extract the base key - get the actual question ID
-                    # Keys might be like "lights_ballast" or "lights_ballast_ballast_issue"
-                    # We want to check if any part of the key is in the exclude list
-                    key_parts = key.split('_')
-                    should_exclude = False
-                    for i in range(len(key_parts)):
-                        check_key = '_'.join(key_parts[i:])
-                        if check_key in exclude_from_no:
-                            should_exclude = True
-                            break
-                    
-                    # Get the actual question text
-                    question_text = find_question_text(equipment['type'], key)
-                    
-                    if answer == 'Yes':
-                        equip_summary['yes_responses'].append({
-                            'item': key,
-                            'question': question_text,
-                            'answer': answer,
-                            'comment': data.get('comment', '')
-                        })
-                        # Collect photos for this Yes response
-                        photo_key = f"photo_{key}"
-                        for pk, pv in equipment.get('photos', {}).items():
-                            if pk.startswith(photo_key):
-                                equip_summary['yes_photos'][pk] = pv
-                    elif answer == 'No':
-                        # Only add to no_responses if it's not in the exclude list
-                        if not should_exclude:
-                            equip_summary['no_responses'].append({
+                # Separate Yes and No responses
+                for key, data in equipment.get('inspection_data', {}).items():
+                    if isinstance(data, dict):
+                        answer = data.get('answer', '')
+                        
+                        # Skip Marvel questions if Marvel is not enabled
+                        if key.startswith('marvel_') and not equipment.get('with_marvel', False):
+                            continue
+                        
+                        # Skip questions that don't belong to current equipment type
+                        if not key.startswith('marvel_'):
+                            # Check if this question belongs to the current equipment type
+                            def check_question_in_checklist(checklist_items, target_key):
+                                for item in checklist_items:
+                                    if item['id'] in target_key:
+                                        return True
+                                    # Check in follow-up questions
+                                    if 'conditions' in item:
+                                        for condition in item['conditions'].values():
+                                            if 'follow_up' in condition:
+                                                if check_question_in_checklist(condition['follow_up'], target_key):
+                                                    return True
+                                return False
+                            
+                            question_found = False
+                            if equipment.get('type'):
+                                checklist = EQUIPMENT_TYPES.get(equipment['type'], {}).get('checklist', [])
+                                question_found = check_question_in_checklist(checklist, key)
+                            
+                            if not question_found:
+                                continue  # Skip this question as it doesn't belong to current equipment
+                        
+                        # Extract the base key - get the actual question ID
+                        # Keys might be like "lights_ballast" or "lights_ballast_ballast_issue"
+                        # We want to check if any part of the key is in the exclude list
+                        key_parts = key.split('_')
+                        should_exclude = False
+                        for i in range(len(key_parts)):
+                            check_key = '_'.join(key_parts[i:])
+                            if check_key in exclude_from_no:
+                                should_exclude = True
+                                break
+                        
+                        # Get the actual question text
+                        question_text = find_question_text(equipment['type'], key)
+                        
+                        if answer == 'Yes':
+                            equip_summary['yes_responses'].append({
                                 'item': key,
                                 'question': question_text,
                                 'answer': answer,
                                 'comment': data.get('comment', '')
                             })
-                            # Collect photos for this No response
+                            # Collect photos for this Yes response
                             photo_key = f"photo_{key}"
                             for pk, pv in equipment.get('photos', {}).items():
                                 if pk.startswith(photo_key):
-                                    equip_summary['no_photos'][pk] = pv
-            
-            # For backward compatibility, keep issues_found as no_responses
-            equip_summary['issues_found'] = equip_summary['no_responses']
-            
-            summary.append(equip_summary)
+                                    equip_summary['yes_photos'][pk] = pv
+                        elif answer == 'No':
+                            # Only add to no_responses if it's not in the exclude list
+                            if not should_exclude:
+                                equip_summary['no_responses'].append({
+                                    'item': key,
+                                    'question': question_text,
+                                    'answer': answer,
+                                    'comment': data.get('comment', '')
+                                })
+                                # Collect photos for this No response
+                                photo_key = f"photo_{key}"
+                                for pk, pv in equipment.get('photos', {}).items():
+                                    if pk.startswith(photo_key):
+                                        equip_summary['no_photos'][pk] = pv
+                    
+                # For backward compatibility, keep issues_found as no_responses
+                equip_summary['issues_found'] = equip_summary['no_responses']
+                
+                kitchen_summary['equipment'].append(equip_summary)
+        
+        if kitchen_summary['equipment']:  # Only add kitchen if it has equipment
+            summary.append(kitchen_summary)
     
     return summary
 
@@ -411,168 +447,178 @@ def create_technical_report(data):
     equipment_heading = doc.add_heading('2. EQUIPMENT INSPECTION DETAILS', level=1)
     style_heading(equipment_heading, level=1)
     
-    equipment_summary = data.get('equipment_inspection', [])
+    kitchen_summary = data.get('equipment_inspection', [])
     
-    if equipment_summary:
-        for idx, equip in enumerate(equipment_summary):
-            # Equipment header
-            marvel_status = " (With Marvel)" if equip.get('with_marvel', False) else ""
-            equip_title = doc.add_heading(f"{equip['type_name']}{marvel_status}", level=2)
-            style_heading(equip_title, level=2)
+    if kitchen_summary:
+        for kitchen_idx, kitchen in enumerate(kitchen_summary):
+            # Kitchen header
+            kitchen_title = doc.add_heading(f"Kitchen: {kitchen['name']}", level=2)
+            style_heading(kitchen_title, level=2)
             
-            # Equipment info
-            equip_info_para = doc.add_paragraph()
-            equip_info_para.add_run(f"Location: {equip['location']}\n").font.size = Pt(11)
-            equip_info_para.add_run(f"Total Photos Taken: {equip['photos_count']}\n").font.size = Pt(11)
+            # Process equipment in this kitchen
+            for equip_idx, equip in enumerate(kitchen.get('equipment', [])):
+                # Equipment header (as sub-section under kitchen)
+                marvel_status = " (With Marvel)" if equip.get('with_marvel', False) else ""
+                equip_title = doc.add_heading(f"  {equip['type_name']}{marvel_status}", level=3)
+                style_heading(equip_title, level=3)
             
-            # YES RESPONSES SECTION
-            if equip.get('yes_responses'):
-                doc.add_paragraph()
-                yes_heading = doc.add_paragraph()
-                yes_run = yes_heading.add_run("Positive Findings:")
-                yes_run.bold = True
-                yes_run.font.color.rgb = RGBColor(0, 128, 0)  # Green color
+                # Equipment info
+                equip_info_para = doc.add_paragraph()
+                equip_info_para.add_run(f"Location: {equip['location']}\n").font.size = Pt(11)
+                equip_info_para.add_run(f"Total Photos Taken: {equip['photos_count']}\n").font.size = Pt(11)
                 
-                # Create table for yes responses
-                yes_table_data = []
-                for yes_item in equip['yes_responses']:
-                    question_text = yes_item.get('question', yes_item['item'].replace('_', ' ').title())
-                    answer_text = "YES"
-                    if yes_item['comment']:
-                        answer_text += f"\n{yes_item['comment']}"
-                    yes_table_data.append((question_text, answer_text))
-                
-                if yes_table_data:
-                    create_info_table(doc, yes_table_data, col_widths=[4, 2.5])
-                
-                # Add Yes photos if available
-                if equip.get('yes_photos'):
+                # YES RESPONSES SECTION
+                if equip.get('yes_responses'):
                     doc.add_paragraph()
-                    yes_photos_para = doc.add_paragraph()
-                    yes_photos_para.add_run("Photos - Positive Findings:\n").bold = True
+                    yes_heading = doc.add_paragraph()
+                    yes_run = yes_heading.add_run("Positive Findings:")
+                    yes_run.bold = True
+                    yes_run.font.color.rgb = RGBColor(0, 128, 0)  # Green color
                     
-                    # Group photos in pairs for side-by-side display
-                    photo_items = list(equip['yes_photos'].items())
-                    for i in range(0, len(photo_items), 2):
-                        # Create a table for side-by-side photos
-                        photo_table = doc.add_table(rows=1, cols=2)
-                        photo_table.autofit = False
+                    # Create table for yes responses
+                    yes_table_data = []
+                    for yes_item in equip['yes_responses']:
+                        question_text = yes_item.get('question', yes_item['item'].replace('_', ' ').title())
+                        answer_text = "YES"
+                        if yes_item['comment']:
+                            answer_text += f"\n{yes_item['comment']}"
+                        yes_table_data.append((question_text, answer_text))
+                    
+                    if yes_table_data:
+                        create_info_table(doc, yes_table_data, col_widths=[4, 2.5])
+                    
+                    # Add Yes photos if available
+                    if equip.get('yes_photos'):
+                        doc.add_paragraph()
+                        yes_photos_para = doc.add_paragraph()
+                        yes_photos_para.add_run("Photos - Positive Findings:\n").bold = True
                         
-                        # First photo
-                        photo_key, photo_file = photo_items[i]
-                        cell1 = photo_table.cell(0, 0)
-                        cell1_para = cell1.paragraphs[0]
-                        cell1_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        
-                        # Reset file position and add photo
-                        photo_file.seek(0)
-                        run1 = cell1_para.add_run()
-                        run1.add_picture(photo_file, width=Inches(2.0))
-                        
-                        # Add caption
-                        caption1 = cell1.add_paragraph()
-                        caption1.add_run(photo_key.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
-                        caption1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        
-                        # Second photo (if exists)
-                        if i + 1 < len(photo_items):
-                            photo_key2, photo_file2 = photo_items[i + 1]
-                            cell2 = photo_table.cell(0, 1)
-                            cell2_para = cell2.paragraphs[0]
-                            cell2_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        # Group photos in pairs for side-by-side display
+                        photo_items = list(equip['yes_photos'].items())
+                        for i in range(0, len(photo_items), 2):
+                            # Create a table for side-by-side photos
+                            photo_table = doc.add_table(rows=1, cols=2)
+                            photo_table.autofit = False
+                            
+                            # First photo
+                            photo_key, photo_file = photo_items[i]
+                            cell1 = photo_table.cell(0, 0)
+                            cell1_para = cell1.paragraphs[0]
+                            cell1_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                             
                             # Reset file position and add photo
-                            photo_file2.seek(0)
-                            run2 = cell2_para.add_run()
-                            run2.add_picture(photo_file2, width=Inches(2.0))
+                            photo_file.seek(0)
+                            run1 = cell1_para.add_run()
+                            run1.add_picture(photo_file, width=Inches(2.0))
                             
                             # Add caption
-                            caption2 = cell2.add_paragraph()
-                            caption2.add_run(photo_key2.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
-                            caption2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        
-                        # Add spacing after photos
-                        doc.add_paragraph()
-            
-            # NO RESPONSES SECTION (Issues)
-            if equip.get('no_responses'):
-                doc.add_paragraph()
-                no_heading = doc.add_paragraph()
-                no_run = no_heading.add_run("Issues Identified:")
-                no_run.bold = True
-                no_run.font.color.rgb = RGBColor(255, 0, 0)  # Red color
+                            caption1 = cell1.add_paragraph()
+                            caption1.add_run(photo_key.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
+                            caption1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            
+                            # Second photo (if exists)
+                            if i + 1 < len(photo_items):
+                                photo_key2, photo_file2 = photo_items[i + 1]
+                                cell2 = photo_table.cell(0, 1)
+                                cell2_para = cell2.paragraphs[0]
+                                cell2_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                
+                                # Reset file position and add photo
+                                photo_file2.seek(0)
+                                run2 = cell2_para.add_run()
+                                run2.add_picture(photo_file2, width=Inches(2.0))
+                                
+                                # Add caption
+                                caption2 = cell2.add_paragraph()
+                                caption2.add_run(photo_key2.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
+                                caption2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            
+                            # Add spacing after photos
+                            doc.add_paragraph()
                 
-                # Create table for no responses
-                no_table_data = []
-                for no_item in equip['no_responses']:
-                    question_text = no_item.get('question', no_item['item'].replace('_', ' ').title())
-                    answer_text = "NO"
-                    if no_item['comment']:
-                        answer_text += f"\n{no_item['comment']}"
-                    no_table_data.append((question_text, answer_text))
-                
-                if no_table_data:
-                    create_info_table(doc, no_table_data, col_widths=[4, 2.5])
-                
-                # Add No photos if available
-                if equip.get('no_photos'):
+                # NO RESPONSES SECTION (Issues)
+                if equip.get('no_responses'):
                     doc.add_paragraph()
-                    no_photos_para = doc.add_paragraph()
-                    no_photos_para.add_run("Photos - Issues:\n").bold = True
+                    no_heading = doc.add_paragraph()
+                    no_run = no_heading.add_run("Issues Identified:")
+                    no_run.bold = True
+                    no_run.font.color.rgb = RGBColor(255, 0, 0)  # Red color
                     
-                    # Group photos in pairs for side-by-side display
-                    photo_items = list(equip['no_photos'].items())
-                    for i in range(0, len(photo_items), 2):
-                        # Create a table for side-by-side photos
-                        photo_table = doc.add_table(rows=1, cols=2)
-                        photo_table.autofit = False
+                    # Create table for no responses
+                    no_table_data = []
+                    for no_item in equip['no_responses']:
+                        question_text = no_item.get('question', no_item['item'].replace('_', ' ').title())
+                        answer_text = "NO"
+                        if no_item['comment']:
+                            answer_text += f"\n{no_item['comment']}"
+                        no_table_data.append((question_text, answer_text))
+                    
+                    if no_table_data:
+                        create_info_table(doc, no_table_data, col_widths=[4, 2.5])
+                
+                    # Add No photos if available
+                    if equip.get('no_photos'):
+                        doc.add_paragraph()
+                        no_photos_para = doc.add_paragraph()
+                        no_photos_para.add_run("Photos - Issues:\n").bold = True
                         
-                        # First photo
-                        photo_key, photo_file = photo_items[i]
-                        cell1 = photo_table.cell(0, 0)
-                        cell1_para = cell1.paragraphs[0]
-                        cell1_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        
-                        # Reset file position and add photo
-                        photo_file.seek(0)
-                        run1 = cell1_para.add_run()
-                        run1.add_picture(photo_file, width=Inches(2.0))
-                        
-                        # Add caption
-                        caption1 = cell1.add_paragraph()
-                        caption1.add_run(photo_key.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
-                        caption1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        
-                        # Second photo (if exists)
-                        if i + 1 < len(photo_items):
-                            photo_key2, photo_file2 = photo_items[i + 1]
-                            cell2 = photo_table.cell(0, 1)
-                            cell2_para = cell2.paragraphs[0]
-                            cell2_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        # Group photos in pairs for side-by-side display
+                        photo_items = list(equip['no_photos'].items())
+                        for i in range(0, len(photo_items), 2):
+                            # Create a table for side-by-side photos
+                            photo_table = doc.add_table(rows=1, cols=2)
+                            photo_table.autofit = False
+                            
+                            # First photo
+                            photo_key, photo_file = photo_items[i]
+                            cell1 = photo_table.cell(0, 0)
+                            cell1_para = cell1.paragraphs[0]
+                            cell1_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                             
                             # Reset file position and add photo
-                            photo_file2.seek(0)
-                            run2 = cell2_para.add_run()
-                            run2.add_picture(photo_file2, width=Inches(2.0))
+                            photo_file.seek(0)
+                            run1 = cell1_para.add_run()
+                            run1.add_picture(photo_file, width=Inches(2.0))
                             
                             # Add caption
-                            caption2 = cell2.add_paragraph()
-                            caption2.add_run(photo_key2.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
-                            caption2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        
-                        # Add spacing after photos
-                        doc.add_paragraph()
+                            caption1 = cell1.add_paragraph()
+                            caption1.add_run(photo_key.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
+                            caption1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            
+                            # Second photo (if exists)
+                            if i + 1 < len(photo_items):
+                                photo_key2, photo_file2 = photo_items[i + 1]
+                                cell2 = photo_table.cell(0, 1)
+                                cell2_para = cell2.paragraphs[0]
+                                cell2_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                
+                                # Reset file position and add photo
+                                photo_file2.seek(0)
+                                run2 = cell2_para.add_run()
+                                run2.add_picture(photo_file2, width=Inches(2.0))
+                                
+                                # Add caption
+                                caption2 = cell2.add_paragraph()
+                                caption2.add_run(photo_key2.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
+                                caption2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            
+                            # Add spacing after photos
+                            doc.add_paragraph()
+                
+                # If no issues found at all
+                if not equip.get('no_responses'):
+                    doc.add_paragraph()
+                    para = doc.add_paragraph()
+                    no_issues_run = para.add_run("No issues identified during inspection.")
+                    no_issues_run.font.size = Pt(11)
+                    no_issues_run.font.color.rgb = RGBColor(0, 128, 0)  # Green color
+                
+                # Add spacing between equipment in the same kitchen
+                if equip_idx < len(kitchen.get('equipment', [])) - 1:
+                    doc.add_paragraph()
             
-            # If no issues found at all
-            if not equip.get('no_responses'):
-                doc.add_paragraph()
-                para = doc.add_paragraph()
-                no_issues_run = para.add_run("No issues identified during inspection.")
-                no_issues_run.font.size = Pt(11)
-                no_issues_run.font.color.rgb = RGBColor(0, 128, 0)  # Green color
-            
-            # Add spacing between equipment
-            if idx < len(equipment_summary) - 1:
+            # Add spacing between kitchens
+            if kitchen_idx < len(kitchen_summary) - 1:
                 doc.add_paragraph()
     else:
         para = doc.add_paragraph()
@@ -721,121 +767,246 @@ def main():
         contact_number = st.text_input("Contact #*", placeholder="e.g., +966 55 558 5449", key="contact_number")
         visit_type = st.selectbox(
             "Visit Type*",
-            ["", "Servicing/Preventive Maintenance", "AMC (Contract)", "Emergency Service", "Installation", "Commissioning"],
+            ["", "Service Call", "AMC (Contract)", "Emergency Service", "Installation", "Commissioning"],
             key="visit_type"
         )
         
         visit_class = st.selectbox(
             "Visit Class*",
-            ["To be invoiced (Chargeable)", "Warranty", "Complaint", "Scheduled Maintenance", "Emergency Service"],
+            ["To Be Invoiced", "Free of Charge", "Warranty"],
             key="visit_class"
         )
         date = st.date_input("Report Date", value=datetime.now(), key="report_date")
     
-    # Equipment Inspection Section (outside form for real-time updates)
-    st.markdown("### Equipment Inspection")
+    # Kitchen and Equipment Inspection Section
+    st.markdown("### Kitchen and Equipment Inspection")
     
-    # Number of equipment to inspect
-    def update_equipment_count():
-        # This callback ensures equipment list updates properly
-        pass
+    # Number of kitchens
+    # Initialize session state for kitchen count if not exists
+    if "num_kitchens" not in st.session_state:
+        st.session_state["num_kitchens"] = len(st.session_state.kitchen_list) if st.session_state.kitchen_list else 1
     
-    num_equipment = st.number_input(
-        "Number of Equipment to Inspect",
+    num_kitchens = st.number_input(
+        "Number of Kitchens",
         min_value=1,
         max_value=10,
-        value=len(st.session_state.equipment_list) if st.session_state.equipment_list else 1,
-        step=1,
-        key="num_equipment",
-        on_change=update_equipment_count
+        key="num_kitchens"
     )
     
-    # Initialize equipment list if needed
-    if len(st.session_state.equipment_list) != num_equipment:
-        # Adjust equipment list size
-        if len(st.session_state.equipment_list) < num_equipment:
-            # Add new equipment
-            for i in range(len(st.session_state.equipment_list), num_equipment):
-                equipment_id = f"equipment_{i}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                st.session_state.equipment_list.append({
-                    'id': equipment_id,
-                    'type': '',
-                    'with_marvel': False,
-                    'location': '',
-                    'inspection_data': {},
-                    'photos': {}
+    # Get the number from session state to ensure consistency
+    num_kitchens = st.session_state["num_kitchens"]
+    
+    # Initialize or adjust kitchen list
+    if len(st.session_state.kitchen_list) != num_kitchens:
+        if len(st.session_state.kitchen_list) < num_kitchens:
+            # Add new kitchens
+            for i in range(len(st.session_state.kitchen_list), num_kitchens):
+                kitchen_id = f"kitchen_{i}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                st.session_state.kitchen_list.append({
+                    'id': kitchen_id,
+                    'name': f'Kitchen {i + 1}',
+                    'equipment_list': []
                 })
         else:
-            # Remove equipment
-            st.session_state.equipment_list = st.session_state.equipment_list[:num_equipment]
+            # Remove kitchens
+            st.session_state.kitchen_list = st.session_state.kitchen_list[:num_kitchens]
     
-    # Display equipment forms
-    for idx, equipment in enumerate(st.session_state.equipment_list):
-        with st.expander(f"Equipment #{idx + 1}", expanded=True):
-            col1, col2 = st.columns(2)
+    # Display kitchens and their equipment
+    for kitchen_idx, kitchen in enumerate(st.session_state.kitchen_list):
+        with st.expander(f"🏪 Kitchen #{kitchen_idx + 1}", expanded=True):
+            # Kitchen name input
+            kitchen_name_key = f"kitchen_name_{kitchen_idx}"
+            if kitchen_name_key not in st.session_state:
+                st.session_state[kitchen_name_key] = kitchen.get('name', f'Kitchen {kitchen_idx + 1}')
             
-            with col1:
-                # Equipment type selection
-                equip_type_key = f"equip_type_{idx}"
-                # Initialize if not exists
-                if equip_type_key not in st.session_state:
-                    st.session_state[equip_type_key] = equipment.get('type', '')
-                    
-                st.selectbox(
-                    "Equipment Type*",
-                    options=[''] + list(EQUIPMENT_TYPES.keys()),
-                    format_func=lambda x: EQUIPMENT_TYPES[x]["name"] if x else "Select equipment type",
-                    key=equip_type_key
-                )
-                # Update the equipment data from session state
-                equipment['type'] = st.session_state[equip_type_key]
-                
-                marvel_key = f"with_marvel_{idx}"
-                # Initialize if not exists
-                if marvel_key not in st.session_state:
-                    st.session_state[marvel_key] = equipment.get('with_marvel', False)
-                    
-                with_marvel = st.checkbox(
-                    "With Marvel System",
-                    key=marvel_key
-                )
-                # Update the equipment data from session state
-                equipment['with_marvel'] = st.session_state[marvel_key]
+            kitchen_name = st.text_input(
+                "Kitchen Name",
+                key=kitchen_name_key,
+                placeholder="e.g., Main Kitchen, Prep Kitchen, etc."
+            )
+            kitchen['name'] = st.session_state[kitchen_name_key]
             
-            with col2:
-                location_key = f"location_{idx}"
-                # Initialize if not exists
-                if location_key not in st.session_state:
-                    st.session_state[location_key] = equipment.get('location', '')
-                    
-                st.text_input(
-                    "Location*",
-                    key=location_key
-                )
-                # Update the equipment data from session state
-                equipment['location'] = st.session_state[location_key]
+            # Number of equipment in this kitchen
+            num_equipment_key = f"num_equipment_{kitchen_idx}"
             
-            # If equipment type is selected, show checklist
-            if equipment['type']:
-                st.markdown("#### Inspection Checklist")
-                equipment_config = EQUIPMENT_TYPES[equipment['type']]
+            # Initialize session state for equipment count if not exists
+            if num_equipment_key not in st.session_state:
+                st.session_state[num_equipment_key] = len(kitchen.get('equipment_list', []))
+            
+            num_equipment = st.number_input(
+                f"Number of Equipment in {kitchen['name']}",
+                min_value=0,
+                max_value=20,
+                key=num_equipment_key
+            )
+            
+            # Get the number from session state to ensure consistency
+            num_equipment = st.session_state[num_equipment_key]
+            
+            # Initialize or adjust equipment list for this kitchen
+            if 'equipment_list' not in kitchen:
+                kitchen['equipment_list'] = []
                 
-                # Render checklist items with full conditional logic
-                for i, item in enumerate(equipment_config['checklist']):
-                    if i > 0:
-                        st.markdown("<hr style='margin: 0.5rem 0;'>", unsafe_allow_html=True)  # Thinner separator
-                    render_checklist_item(equipment, item, idx)
-                
-                # If "With Marvel" is checked, add Marvel checklist
-                if equipment.get('with_marvel', False):
-                    st.markdown("#### Marvel System Checklist")
-                    marvel_config = EQUIPMENT_TYPES.get('MARVEL', {})
-                    if marvel_config and 'checklist' in marvel_config:
-                        for i, item in enumerate(marvel_config['checklist']):
-                            if i > 0:
-                                st.markdown("<hr style='margin: 0.5rem 0;'>", unsafe_allow_html=True)
-                            # Add prefix to distinguish Marvel questions
-                            render_checklist_item(equipment, item, idx, prefix="marvel_")
+            current_count = len(kitchen['equipment_list'])
+            if current_count != num_equipment:
+                if current_count < num_equipment:
+                    # Add new equipment - only add what's needed
+                    items_to_add = num_equipment - current_count
+                    for i in range(items_to_add):
+                        equipment_id = f"equipment_{kitchen_idx}_{current_count + i}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
+                        kitchen['equipment_list'].append({
+                            'id': equipment_id,
+                            'type': '',
+                            'with_marvel': False,
+                            'location': '',
+                            'inspection_data': {},
+                            'photos': {}
+                        })
+                elif current_count > num_equipment:
+                    # Remove excess equipment
+                    kitchen['equipment_list'] = kitchen['equipment_list'][:num_equipment]
+            
+            # Display equipment for this kitchen
+            if kitchen['equipment_list']:
+                st.markdown(f"#### Equipment in {kitchen['name']} ({len(kitchen['equipment_list'])} items)")
+                for equip_idx, equipment in enumerate(kitchen['equipment_list']):
+                    with st.container():
+                        st.markdown(f"**Equipment #{equip_idx + 1}**")
+                        col1, col2 = st.columns(2)
+                        
+                        # Create unique keys including kitchen index
+                        equipment_key_prefix = f"k{kitchen_idx}_e{equip_idx}"
+                        
+                        with col1:
+                            # Equipment type selection
+                            equip_type_key = f"equip_type_{equipment_key_prefix}"
+                            # Initialize if not exists
+                            if equip_type_key not in st.session_state:
+                                st.session_state[equip_type_key] = equipment.get('type', '')
+                            
+                            # Store previous equipment type to detect changes
+                            previous_equip_type = equipment.get('type', '')
+                                
+                            st.selectbox(
+                                "Equipment Type*",
+                                options=[''] + list(EQUIPMENT_TYPES.keys()),
+                                format_func=lambda x: EQUIPMENT_TYPES[x]["name"] if x else "Select equipment type",
+                                key=equip_type_key
+                            )
+                            # Update the equipment data from session state
+                            equipment['type'] = st.session_state[equip_type_key]
+                            
+                            # If equipment type changed, clear all inspection data for this equipment
+                            if previous_equip_type != equipment['type'] and previous_equip_type:
+                                # Clear all inspection data (except Marvel-prefixed ones)
+                                if 'inspection_data' in equipment:
+                                    keys_to_remove = []
+                                    for key in equipment['inspection_data'].keys():
+                                        if not key.startswith('marvel_'):  # Keep Marvel data if exists
+                                            keys_to_remove.append(key)
+                                    for key in keys_to_remove:
+                                        del equipment['inspection_data'][key]
+                                
+                                # Clear all photos (except Marvel-related ones)
+                                if 'photos' in equipment:
+                                    keys_to_remove = []
+                                    for key in equipment['photos'].keys():
+                                        if 'marvel_' not in key:  # Keep Marvel photos if exists
+                                            keys_to_remove.append(key)
+                                    for key in keys_to_remove:
+                                        del equipment['photos'][key]
+                                
+                                # Clear related session state keys for this equipment
+                                keys_to_clear = []
+                                for key in st.session_state.keys():
+                                    if equipment_key_prefix in key and (key.startswith('q_') or key.startswith('comment_') or key.startswith('photo_')):
+                                        if 'marvel_' not in key:  # Don't clear Marvel-related keys
+                                            keys_to_clear.append(key)
+                                for key in keys_to_clear:
+                                    del st.session_state[key]
+                            
+                            marvel_key = f"with_marvel_{equipment_key_prefix}"
+                            # Initialize if not exists
+                            if marvel_key not in st.session_state:
+                                st.session_state[marvel_key] = equipment.get('with_marvel', False)
+                                
+                            # Store previous state to detect changes
+                            previous_marvel_state = equipment.get('with_marvel', False)
+                            
+                            with_marvel = st.checkbox(
+                                "With Marvel System",
+                                key=marvel_key
+                            )
+                            # Update the equipment data from session state
+                            equipment['with_marvel'] = st.session_state[marvel_key]
+                            
+                            # If Marvel was unchecked, clear all Marvel-related data
+                            if previous_marvel_state and not equipment['with_marvel']:
+                                # Clear Marvel inspection data
+                                if 'inspection_data' in equipment:
+                                    keys_to_remove = []
+                                    for key in equipment['inspection_data'].keys():
+                                        if key.startswith('marvel_'):
+                                            keys_to_remove.append(key)
+                                    for key in keys_to_remove:
+                                        del equipment['inspection_data'][key]
+                                
+                                # Clear Marvel photos
+                                if 'photos' in equipment:
+                                    keys_to_remove = []
+                                    for key in equipment['photos'].keys():
+                                        if 'marvel_' in key:
+                                            keys_to_remove.append(key)
+                                    for key in keys_to_remove:
+                                        del equipment['photos'][key]
+                                
+                                # Clear Marvel-related session state keys
+                                keys_to_clear = []
+                                for key in st.session_state.keys():
+                                    if f"marvel_" in key and equipment_key_prefix in key:
+                                        keys_to_clear.append(key)
+                                for key in keys_to_clear:
+                                    del st.session_state[key]
+                        
+                        with col2:
+                            location_key = f"location_{equipment_key_prefix}"
+                            # Initialize if not exists
+                            if location_key not in st.session_state:
+                                st.session_state[location_key] = equipment.get('location', '')
+                                
+                            st.text_input(
+                                "Location*",
+                                key=location_key,
+                                placeholder="e.g., Near entrance, Back wall, etc."
+                            )
+                            # Update the equipment data from session state
+                            equipment['location'] = st.session_state[location_key]
+                        
+                        # If equipment type is selected, show checklist
+                        if equipment['type']:
+                            st.markdown("##### Inspection Checklist")
+                            equipment_config = EQUIPMENT_TYPES[equipment['type']]
+                            
+                            # Render checklist items with full conditional logic
+                            for i, item in enumerate(equipment_config['checklist']):
+                                if i > 0:
+                                    st.markdown("<hr style='margin: 0.5rem 0;'>", unsafe_allow_html=True)  # Thinner separator
+                                render_checklist_item(equipment, item, equipment_key_prefix)
+                            
+                            # If "With Marvel" is checked, add Marvel checklist
+                            if equipment.get('with_marvel', False):
+                                st.markdown("##### Marvel System Checklist")
+                                marvel_config = EQUIPMENT_TYPES.get('MARVEL', {})
+                                if marvel_config and 'checklist' in marvel_config:
+                                    for i, item in enumerate(marvel_config['checklist']):
+                                        if i > 0:
+                                            st.markdown("<hr style='margin: 0.5rem 0;'>", unsafe_allow_html=True)
+                                        # Add prefix to distinguish Marvel questions
+                                        render_checklist_item(equipment, item, equipment_key_prefix, prefix="marvel_")
+                        
+                        # Add separator between equipment
+                        if equip_idx < len(kitchen['equipment_list']) - 1:
+                            st.markdown("---")
     
     # Continue with the rest of the form
     with st.form("technical_report_form"):
@@ -976,14 +1147,16 @@ def main():
             
             missing_fields = [field for field, value in required_fields.items() if not value]
             
-            # Validate equipment data
+            # Validate kitchen and equipment data
             equipment_errors = []
-            for idx, equipment in enumerate(st.session_state.equipment_list):
-                equip_name = f"Equipment #{idx + 1}"
-                if not equipment.get('type'):
-                    equipment_errors.append(f"{equip_name}: Equipment type is required")
-                elif not equipment.get('location'):
-                    equipment_errors.append(f"{equip_name}: Location is required")
+            for kitchen_idx, kitchen in enumerate(st.session_state.kitchen_list):
+                kitchen_name = kitchen.get('name', f'Kitchen {kitchen_idx + 1}')
+                for equip_idx, equipment in enumerate(kitchen.get('equipment_list', [])):
+                    equip_name = f"{kitchen_name} - Equipment #{equip_idx + 1}"
+                    if not equipment.get('type'):
+                        equipment_errors.append(f"{equip_name}: Equipment type is required")
+                    elif not equipment.get('location'):
+                        equipment_errors.append(f"{equip_name}: Location is required")
             
             # Show reminders for missing fields but don't block submission
             if missing_fields or equipment_errors:
@@ -1061,8 +1234,8 @@ def main():
                     'visit_type': visit_type,
                     'visit_class': visit_class,
                     'date': date.strftime('%Y-%m-%d'),
-                    'equipment_inspection': get_equipment_summary(),
-                    'equipment_list': st.session_state.equipment_list,
+                    'equipment_inspection': get_kitchen_summary(),
+                    'kitchen_list': st.session_state.kitchen_list,
                     'work_performed': work_performed,
                     'recommendations': recommendations,
                     'technician_name': technician_name,
@@ -1108,7 +1281,7 @@ def main():
             if st.button("Generate Another Report", type="secondary"):
                 # Clear all session state data for a fresh start
                 st.session_state.report_generated = False
-                st.session_state.equipment_list = []
+                st.session_state.kitchen_list = []
                 st.session_state.report_data = {}
                 # Clear all widget keys
                 keys_to_clear = []

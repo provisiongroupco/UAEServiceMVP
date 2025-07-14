@@ -15,8 +15,8 @@ sample_data = {
     'contact_person': 'Sultan Alofi',
     'outlet_location': 'Via Mall - Riyadh',
     'contact_number': '+966 55 558 5449',
-    'visit_type': 'Servicing/Preventive Maintenance',
-    'visit_class': 'To be invoiced (Chargeable)',
+    'visit_type': 'Service Call',
+    'visit_class': 'To Be Invoiced',
     'date': datetime.now().strftime('%Y-%m-%d'),
     'equipment_details': '''Hood Model: Halton KVL-3000
 Serial Number: HLT-2024-KSA-1234
