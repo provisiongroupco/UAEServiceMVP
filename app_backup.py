@@ -12,6 +12,7 @@ from streamlit_drawable_canvas import st_canvas
 import numpy as np
 from utils import (add_header_with_logo, add_footer, style_heading, 
                   create_info_table, add_logo_to_doc, set_cell_margins)
+from equipment_inspection import equipment_inspector
 from equipment_config import EQUIPMENT_TYPES
 
 # Page configuration
@@ -63,8 +64,6 @@ if 'technician_signature' not in st.session_state:
     st.session_state.technician_signature = None
 if 'equipment_list' not in st.session_state:
     st.session_state.equipment_list = []
-if 'form_data' not in st.session_state:
-    st.session_state.form_data = {}
 
 
 def render_checklist_item(equipment, item, idx, prefix=""):
@@ -274,15 +273,13 @@ def create_technical_report(data):
                         issue_text += f" - {issue['comment']}"
                     issues_para.add_run(issue_text + "\n").font.size = Pt(10)
             else:
-                para = doc.add_paragraph()
-                para.add_run("No issues identified during inspection.").font.size = Pt(11)
+                doc.add_paragraph("No issues identified during inspection.").font.size = Pt(11)
             
             # Add spacing between equipment
             if idx < len(equipment_summary) - 1:
                 doc.add_paragraph()
     else:
-        para = doc.add_paragraph()
-        para.add_run("No equipment inspection data available.").font.size = Pt(11)
+        doc.add_paragraph("No equipment inspection data available.")
     
     # WORK PERFORMED SECTION
     work_heading = doc.add_heading('3. WORK PERFORMED', level=1)
@@ -425,50 +422,53 @@ def main():
     # Main form for Technical Report
     st.markdown('<h2 class="section-header">Technical Report Form</h2>', unsafe_allow_html=True)
     
-    # General Information Section (outside form)
-    st.markdown("### General Information")
-    col1, col2 = st.columns(2)
+    # Store form data in session state
+    form_container = st.container()
     
-    with col1:
-        customer_name = st.text_input("Customer's Name*", placeholder="e.g., SELA Company", key="customer_name")
-        project_name = st.text_input("Project Name*", placeholder="e.g., Stella kitchen hoods", key="project_name")
-        contact_person = st.text_input("Contact Person*", placeholder="e.g., Sultan Alofi", key="contact_person")
-        outlet_location = st.text_input("Outlet/Location*", placeholder="e.g., Via - Riyadh", key="outlet_location")
-    
-    with col2:
-        contact_number = st.text_input("Contact #*", placeholder="e.g., +966 55 558 5449", key="contact_number")
-        visit_type = st.selectbox(
-            "Visit Type*",
-            ["", "Servicing/Preventive Maintenance", "AMC (Contract)", "Emergency Service", "Installation", "Commissioning"],
-            key="visit_type"
+    with form_container:
+        # General Information Section (outside form for now)
+        st.markdown("### General Information")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            customer_name = st.text_input("Customer's Name*", placeholder="e.g., SELA Company")
+            project_name = st.text_input("Project Name*", placeholder="e.g., Stella kitchen hoods")
+            contact_person = st.text_input("Contact Person*", placeholder="e.g., Sultan Alofi")
+            outlet_location = st.text_input("Outlet/Location*", placeholder="e.g., Via - Riyadh")
+        
+        with col2:
+            contact_number = st.text_input("Contact #*", placeholder="e.g., +966 55 558 5449")
+            visit_type = st.selectbox(
+                "Visit Type*",
+                ["", "Servicing/Preventive Maintenance", "AMC (Contract)", "Emergency Service", "Installation", "Commissioning"]
+            )
+            # Store visit type in session state for equipment inspection
+            st.session_state.visit_type = visit_type
+            
+            visit_class = st.selectbox(
+                "Visit Class*",
+                ["To be invoiced (Chargeable)", "Warranty", "Complaint", "Scheduled Maintenance", "Emergency Service"]
+            )
+            date = st.date_input("Report Date", value=datetime.now())
+        
+        # Equipment Inspection Section
+        st.markdown("### Equipment Inspection")
+        
+        # Since we can't use buttons in forms, we'll use a different approach
+        # Number of equipment to inspect
+        num_equipment = st.number_input(
+            "Number of Equipment to Inspect",
+            min_value=1,
+            max_value=10,
+            value=len(st.session_state.equipment_list) if st.session_state.equipment_list else 1,
+            step=1,
+            key="num_equipment"
         )
         
-        visit_class = st.selectbox(
-            "Visit Class*",
-            ["To be invoiced (Chargeable)", "Warranty", "Complaint", "Scheduled Maintenance", "Emergency Service"],
-            key="visit_class"
-        )
-        date = st.date_input("Report Date", value=datetime.now(), key="report_date")
-    
-    # Equipment Inspection Section (outside form for real-time updates)
-    st.markdown("### Equipment Inspection")
-    
-    # Number of equipment to inspect
-    num_equipment = st.number_input(
-        "Number of Equipment to Inspect",
-        min_value=1,
-        max_value=10,
-        value=len(st.session_state.equipment_list) if st.session_state.equipment_list else 1,
-        step=1,
-        key="num_equipment"
-    )
-    
-    # Initialize equipment list if needed
-    if len(st.session_state.equipment_list) != num_equipment:
-        # Adjust equipment list size
-        if len(st.session_state.equipment_list) < num_equipment:
-            # Add new equipment
-            for i in range(len(st.session_state.equipment_list), num_equipment):
+        # Initialize equipment list if needed
+        if 'equipment_list' not in st.session_state or len(st.session_state.equipment_list) != num_equipment:
+            st.session_state.equipment_list = []
+            for i in range(num_equipment):
                 equipment_id = f"equipment_{i}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
                 st.session_state.equipment_list.append({
                     'id': equipment_id,
@@ -478,51 +478,46 @@ def main():
                     'inspection_data': {},
                     'photos': {}
                 })
-        else:
-            # Remove equipment
-            st.session_state.equipment_list = st.session_state.equipment_list[:num_equipment]
-    
-    # Display equipment forms
-    for idx, equipment in enumerate(st.session_state.equipment_list):
-        with st.expander(f"Equipment #{idx + 1}", expanded=True):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                # Equipment type selection
-                equipment['type'] = st.selectbox(
-                    "Equipment Type*",
-                    options=[''] + list(EQUIPMENT_TYPES.keys()),
-                    format_func=lambda x: EQUIPMENT_TYPES[x]["name"] if x else "Select equipment type",
-                    index=([''] + list(EQUIPMENT_TYPES.keys())).index(equipment.get('type', '')),
-                    key=f"equip_type_{idx}"
-                )
+        
+        # Display equipment forms
+        for idx, equipment in enumerate(st.session_state.equipment_list):
+            with st.expander(f"Equipment #{idx + 1}", expanded=True):
+                col1, col2 = st.columns(2)
                 
-                equipment['serial_number'] = st.text_input(
-                    "Serial Number/ID*",
-                    value=equipment.get('serial_number', ''),
-                    key=f"serial_{idx}"
-                )
-            
-            with col2:
-                equipment['location'] = st.text_input(
-                    "Location*",
-                    value=equipment.get('location', ''),
-                    key=f"location_{idx}"
-                )
-            
-            # If equipment type is selected, show checklist
-            if equipment['type']:
-                st.markdown("#### Inspection Checklist")
-                equipment_config = EQUIPMENT_TYPES[equipment['type']]
+                with col1:
+                    # Equipment type selection
+                    equipment['type'] = st.selectbox(
+                        "Equipment Type*",
+                        options=[''] + list(EQUIPMENT_TYPES.keys()),
+                        format_func=lambda x: EQUIPMENT_TYPES[x]["name"] if x else "Select equipment type",
+                        index=([''] + list(EQUIPMENT_TYPES.keys())).index(equipment.get('type', '')),
+                        key=f"equip_type_{idx}"
+                    )
+                    
+                    equipment['serial_number'] = st.text_input(
+                        "Serial Number/ID*",
+                        value=equipment.get('serial_number', ''),
+                        key=f"serial_{idx}"
+                    )
                 
-                # Render checklist items with full conditional logic
-                for i, item in enumerate(equipment_config['checklist']):
-                    if i > 0:
-                        st.markdown("---")  # Add a separator between questions
-                    render_checklist_item(equipment, item, idx)
-    
-    # Continue with the rest of the form
-    with st.form("technical_report_form"):
+                with col2:
+                    equipment['location'] = st.text_input(
+                        "Location*",
+                        value=equipment.get('location', ''),
+                        key=f"location_{idx}"
+                    )
+                
+                # If equipment type is selected, show checklist
+                if equipment['type']:
+                    st.markdown("#### Inspection Checklist")
+                    equipment_config = EQUIPMENT_TYPES[equipment['type']]
+                    
+                    # Render checklist items with full conditional logic
+                    for i, item in enumerate(equipment_config['checklist']):
+                        if i > 0:
+                            st.markdown("---")  # Add a separator between questions
+                        render_checklist_item(equipment, item, idx)
+        
         # Work Performed Section
         st.markdown("### Work Performed")
         work_performed = st.text_area(
@@ -595,16 +590,6 @@ def main():
         submitted = st.form_submit_button("Generate Report", type="primary")
         
         if submitted:
-            # Get values from session state
-            customer_name = st.session_state.get('customer_name', '')
-            project_name = st.session_state.get('project_name', '')
-            contact_person = st.session_state.get('contact_person', '')
-            outlet_location = st.session_state.get('outlet_location', '')
-            contact_number = st.session_state.get('contact_number', '')
-            visit_type = st.session_state.get('visit_type', '')
-            visit_class = st.session_state.get('visit_class', '')
-            date = st.session_state.get('report_date', datetime.now())
-            
             # Validation
             required_fields = {
                 "Customer's Name": customer_name,
@@ -632,48 +617,39 @@ def main():
                 elif not equipment.get('location'):
                     equipment_errors.append(f"{equip_name}: Location is required")
             
-            # Show reminders for missing fields but don't block submission
-            if missing_fields or equipment_errors:
-                st.warning("📋 **Reminder:** The following fields are recommended but not required:")
-                if missing_fields:
-                    st.write("**General Information:**")
-                    for field in missing_fields:
-                        st.write(f"• {field}")
-                if equipment_errors:
-                    st.write("**Equipment Information:**")
-                    for error in equipment_errors:
-                        st.write(f"• {error}")
-                st.info("The report will be generated with the available information.")
-            
-            # Always proceed with report generation
-            # Process signature from canvas
-            signature_img = None
-            if canvas_result.image_data is not None and np.any(canvas_result.image_data[:,:,3] > 0):
-                # Convert canvas to image
-                sig_image = Image.fromarray(canvas_result.image_data.astype('uint8'), 'RGBA')
-                
-                # Create white background
-                white_bg = Image.new('RGB', sig_image.size, 'white')
-                white_bg.paste(sig_image, mask=sig_image.split()[3])
-                
-                # Find the bounding box of the signature
-                bbox = white_bg.getbbox()
-                if bbox:
-                    # Crop to signature
-                    cropped = white_bg.crop(bbox)
+            if missing_fields:
+                st.error(f"Please fill in the following required fields: {', '.join(missing_fields)}")
+            elif equipment_errors:
+                st.error("Equipment inspection errors:\n" + "\n".join(f"• {error}" for error in equipment_errors))
+            else:
+                # Process signature from canvas
+                signature_img = None
+                if canvas_result.image_data is not None and np.any(canvas_result.image_data[:,:,3] > 0):
+                    # Convert canvas to image
+                    sig_image = Image.fromarray(canvas_result.image_data.astype('uint8'), 'RGBA')
                     
-                    # Resize if too large
-                    max_width, max_height = 200, 80
-                    cropped.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+                    # Create white background
+                    white_bg = Image.new('RGB', sig_image.size, 'white')
+                    white_bg.paste(sig_image, mask=sig_image.split()[3])
                     
-                    # Convert to bytes
-                    img_bytes = io.BytesIO()
-                    cropped.save(img_bytes, format='PNG')
-                    img_bytes.seek(0)
-                    signature_img = img_bytes
-            
-            # Collect all data
-            report_data = {
+                    # Find the bounding box of the signature
+                    bbox = white_bg.getbbox()
+                    if bbox:
+                        # Crop to signature
+                        cropped = white_bg.crop(bbox)
+                        
+                        # Resize if too large
+                        max_width, max_height = 200, 80
+                        cropped.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+                        
+                        # Convert to bytes
+                        img_bytes = io.BytesIO()
+                        cropped.save(img_bytes, format='PNG')
+                        img_bytes.seek(0)
+                        signature_img = img_bytes
+                
+                # Collect all data
+                report_data = {
                     'customer_name': customer_name,
                     'project_name': project_name,
                     'contact_person': contact_person,
@@ -691,13 +667,13 @@ def main():
                     'technician_id': technician_id,
                     'service_date': service_date.strftime('%Y-%m-%d'),
                     'technician_signature': signature_img
-            }
-            
-            # Store data in session state for download outside form
-            st.session_state.report_data = report_data
-            st.session_state.report_generated = True
-            st.session_state.saved_customer_name = customer_name
-            st.session_state.saved_report_date = date
+                }
+                
+                # Store data in session state for download outside form
+                st.session_state.report_data = report_data
+                st.session_state.report_generated = True
+                st.session_state.customer_name = customer_name
+                st.session_state.report_date = date
     
     # Handle report download outside of form
     if st.session_state.get('report_generated', False):
@@ -706,8 +682,8 @@ def main():
             doc_bytes = create_technical_report(st.session_state.report_data)
             
             # Create filename
-            customer_name = st.session_state.saved_customer_name
-            date = st.session_state.saved_report_date
+            customer_name = st.session_state.customer_name
+            date = st.session_state.report_date
             filename = f"Technical_Report_{customer_name.replace(' ', '_')}_{date.strftime('%Y%m%d')}.docx"
             
             # Success message

@@ -18,7 +18,10 @@
       "Bash(git remote set-url:*)",
       "Bash(git push:*)",
       "Bash(source:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(streamlit run:*)",
+      "Bash(pkill:*)",
+      "Bash(mv:*)"
     ],
     "deny": []
   }
