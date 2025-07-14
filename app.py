@@ -8,6 +8,8 @@ import io
 import os
 from PIL import Image
 import base64
+from streamlit_drawable_canvas import st_canvas
+import numpy as np
 from utils import (add_header_with_logo, add_footer, style_heading, 
                   create_info_table, add_logo_to_doc, set_cell_margins)
 
@@ -59,33 +61,6 @@ if 'report_generated' not in st.session_state:
 if 'technician_signature' not in st.session_state:
     st.session_state.technician_signature = None
 
-def process_uploaded_signature(uploaded_file):
-    """Process an uploaded signature image and return image bytes"""
-    if uploaded_file is not None:
-        # Read the uploaded image
-        img = Image.open(uploaded_file)
-        
-        # Convert to RGB if necessary
-        if img.mode != 'RGB':
-            rgb_img = Image.new('RGB', img.size, 'white')
-            if img.mode == 'RGBA':
-                rgb_img.paste(img, mask=img.split()[3])
-            else:
-                rgb_img.paste(img)
-        else:
-            rgb_img = img
-        
-        # Resize to reasonable signature size (maintain aspect ratio)
-        max_width = 200
-        max_height = 80
-        rgb_img.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
-        
-        # Save to bytes
-        img_bytes = io.BytesIO()
-        rgb_img.save(img_bytes, format='PNG')
-        img_bytes.seek(0)
-        return img_bytes
-    return None
 
 def create_technical_report(data):
     """Generate a Professional Technical Report Word document"""
@@ -360,50 +335,36 @@ def main():
         
         # Signature Section
         st.markdown("### Technician Signature")
+        st.markdown("Please draw your signature below using your mouse or touchscreen")
         
-        # Create tabs for signature options
-        sig_tab1, sig_tab2 = st.tabs(["Upload Signature", "Create Signature"])
+        # Create signature canvas
+        col1, col2 = st.columns([4, 1])
         
-        signature_file = None
-        
-        with sig_tab1:
-            st.markdown("Upload a signature image file")
-            signature_file = st.file_uploader(
-                "Choose signature image",
-                type=['png', 'jpg', 'jpeg'],
-                help="Upload a signature image created on your device",
-                key="sig_upload"
+        with col1:
+            canvas_result = st_canvas(
+                fill_color="rgba(255, 255, 255, 0)",  # Transparent fill
+                stroke_width=3,
+                stroke_color="#000000",
+                background_color="#FFFFFF",
+                background_image=None,
+                update_streamlit=True,
+                height=150,
+                width=500,
+                drawing_mode="freedraw",
+                point_display_radius=0,
+                display_toolbar=True,
+                key="signature_canvas",
             )
-            
-            if signature_file:
-                col1, col2 = st.columns([1, 3])
-                with col1:
-                    st.image(signature_file, width=200, caption="Your signature")
-                with col2:
-                    st.info("✅ Signature uploaded successfully")
         
-        with sig_tab2:
-            st.markdown("#### Create a signature using our signature pad")
-            st.markdown("""
-            1. Open the [Signature Pad](signature_pad.html) in a new tab
-            2. Draw your signature using mouse or touch
-            3. Click 'Save Signature' and download the image
-            4. Upload the downloaded signature using the 'Upload Signature' tab
-            """)
-            
-            # Check if signature pad file exists
-            if os.path.exists('signature_pad.html'):
-                with open('signature_pad.html', 'r') as f:
-                    html_content = f.read()
-                
-                # Provide download button for the HTML file
-                st.download_button(
-                    label="📥 Download Signature Pad (HTML)",
-                    data=html_content,
-                    file_name="signature_pad.html",
-                    mime="text/html",
-                    help="Download and open this file in your browser to create a signature"
-                )
+        with col2:
+            st.markdown("### ")  # Add spacing
+            st.info("Use the trash icon in the canvas toolbar to clear")
+        
+        # Check if signature is drawn
+        if canvas_result.image_data is not None:
+            # Check if canvas has any drawing (non-transparent pixels)
+            if np.any(canvas_result.image_data[:,:,3] > 0):
+                st.success("✅ Signature captured")
         
         # Submit button
         submitted = st.form_submit_button("Generate Report", type="primary")
@@ -429,10 +390,31 @@ def main():
             if missing_fields:
                 st.error(f"Please fill in the following required fields: {', '.join(missing_fields)}")
             else:
-                # Process signature if uploaded
+                # Process signature from canvas
                 signature_img = None
-                if signature_file is not None:
-                    signature_img = process_uploaded_signature(signature_file)
+                if canvas_result.image_data is not None and np.any(canvas_result.image_data[:,:,3] > 0):
+                    # Convert canvas to image
+                    sig_image = Image.fromarray(canvas_result.image_data.astype('uint8'), 'RGBA')
+                    
+                    # Create white background
+                    white_bg = Image.new('RGB', sig_image.size, 'white')
+                    white_bg.paste(sig_image, mask=sig_image.split()[3])
+                    
+                    # Find the bounding box of the signature
+                    bbox = white_bg.getbbox()
+                    if bbox:
+                        # Crop to signature
+                        cropped = white_bg.crop(bbox)
+                        
+                        # Resize if too large
+                        max_width, max_height = 200, 80
+                        cropped.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+                        
+                        # Convert to bytes
+                        img_bytes = io.BytesIO()
+                        cropped.save(img_bytes, format='PNG')
+                        img_bytes.seek(0)
+                        signature_img = img_bytes
                 
                 # Collect all data
                 report_data = {
