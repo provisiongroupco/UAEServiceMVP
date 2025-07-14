@@ -7,7 +7,6 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 import io
 import os
 from PIL import Image
-import base64
 from streamlit_drawable_canvas import st_canvas
 import numpy as np
 from utils import (add_header_with_logo, add_footer, style_heading, 
@@ -26,18 +25,18 @@ st.set_page_config(
 st.markdown("""
     <style>
     .main-header {
-        font-size: 2.5rem;
+        font-size: 2.2rem;
         color: #1f4788;
         font-weight: bold;
         text-align: center;
-        margin-bottom: 2rem;
+        margin-bottom: 1.2rem;
     }
     .section-header {
-        font-size: 1.5rem;
+        font-size: 1.4rem;
         color: #2c5aa0;
         font-weight: bold;
-        margin-top: 1.5rem;
-        margin-bottom: 1rem;
+        margin-top: 0.8rem;
+        margin-bottom: 0.6rem;
     }
     .stButton > button {
         background-color: #1f4788;
@@ -50,6 +49,30 @@ st.markdown("""
     }
     .stButton > button:hover {
         background-color: #2c5aa0;
+    }
+    /* Reduce spacing between elements */
+    .stTextInput > div > div > input {
+        margin-bottom: 0;
+    }
+    .stSelectbox > div > div {
+        margin-bottom: 0;
+    }
+    .stTextArea > div > div > textarea {
+        margin-bottom: 0;
+    }
+    div[data-testid="stVerticalBlock"] > div {
+        gap: 0.8rem;
+    }
+    .element-container {
+        margin-bottom: 0.5rem;
+    }
+    h3 {
+        margin-top: 1rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    h4 {
+        margin-top: 0.8rem !important;
+        margin-bottom: 0.4rem !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -67,10 +90,18 @@ if 'form_data' not in st.session_state:
     st.session_state.form_data = {}
 
 
-def render_checklist_item(equipment, item, idx, prefix=""):
+def render_checklist_item(equipment, item, equip_idx, prefix=""):
     """Recursively render a checklist item with all its conditional logic"""
     item_key = prefix + item['id']
-    item_data = equipment['inspection_data'].setdefault(item_key, {})
+    
+    # Ensure inspection_data exists
+    if 'inspection_data' not in equipment:
+        equipment['inspection_data'] = {}
+    
+    if item_key not in equipment['inspection_data']:
+        equipment['inspection_data'][item_key] = {}
+    
+    item_data = equipment['inspection_data'][item_key]
     
     # Render the question
     question = item['question']
@@ -78,46 +109,79 @@ def render_checklist_item(equipment, item, idx, prefix=""):
     
     if question_type == 'yes_no':
         options = ['', 'Yes', 'No']
-        current_answer = item_data.get('answer', '')
-        item_data['answer'] = st.selectbox(
+        widget_key = f"q_{item_key}_{equip_idx}"
+        
+        # Initialize session state if not exists
+        if widget_key not in st.session_state:
+            st.session_state[widget_key] = item_data.get('answer', '')
+            
+        answer = st.selectbox(
             question,
             options=options,
-            index=options.index(current_answer) if current_answer in options else 0,
-            key=f"q_{item_key}_{idx}"
+            key=widget_key
         )
+        # Update from session state
+        st.session_state.equipment_list[equip_idx]['inspection_data'][item_key]['answer'] = st.session_state[widget_key]
+        
     elif question_type == 'yes_no_na':
         options = ['', 'Yes', 'No', 'N/A']
-        current_answer = item_data.get('answer', '')
-        item_data['answer'] = st.selectbox(
+        widget_key = f"q_{item_key}_{equip_idx}"
+        
+        # Initialize session state if not exists
+        if widget_key not in st.session_state:
+            st.session_state[widget_key] = item_data.get('answer', '')
+            
+        answer = st.selectbox(
             question,
             options=options,
-            index=options.index(current_answer) if current_answer in options else 0,
-            key=f"q_{item_key}_{idx}"
+            key=widget_key
         )
+        # Update from session state
+        st.session_state.equipment_list[equip_idx]['inspection_data'][item_key]['answer'] = st.session_state[widget_key]
+        
     elif question_type == 'text':
-        item_data['answer'] = st.text_input(
+        widget_key = f"q_{item_key}_{equip_idx}"
+        
+        # Initialize session state if not exists
+        if widget_key not in st.session_state:
+            st.session_state[widget_key] = item_data.get('answer', '')
+            
+        answer = st.text_input(
             question,
-            value=item_data.get('answer', ''),
-            key=f"q_{item_key}_{idx}"
+            key=widget_key
         )
+        # Update from session state
+        st.session_state.equipment_list[equip_idx]['inspection_data'][item_key]['answer'] = st.session_state[widget_key]
+        
     elif question_type == 'number':
-        item_data['answer'] = st.number_input(
+        widget_key = f"q_{item_key}_{equip_idx}"
+        
+        # Initialize session state if not exists
+        if widget_key not in st.session_state:
+            st.session_state[widget_key] = item_data.get('answer', 0)
+            
+        answer = st.number_input(
             question,
             min_value=0,
-            value=item_data.get('answer', 0),
             step=1,
-            key=f"q_{item_key}_{idx}"
+            key=widget_key
         )
+        # Update from session state
+        st.session_state.equipment_list[equip_idx]['inspection_data'][item_key]['answer'] = st.session_state[widget_key]
+    else:
+        answer = None
+    
+    # Get answer from updated data for conditional logic
+    answer = st.session_state.equipment_list[equip_idx]['inspection_data'][item_key].get('answer', '')
     
     # Handle conditional logic based on answer
-    answer = item_data.get('answer', '')
     if answer and 'conditions' in item:
         # Convert answer to lowercase for matching
         answer_key = answer.lower()
         condition = item['conditions'].get(answer_key)
         if condition:
             # Show a visual indicator that this answer triggered conditions
-            st.markdown(f"<small style='color: #1f4788;'>→ Based on your answer '{answer}', please provide the following:</small>", unsafe_allow_html=True)
+            st.markdown(f"<small style='color: #1f4788; margin: 0;'>→ Based on your answer '{answer}':</small>", unsafe_allow_html=True)
             
             # Handle photo requirement
             if condition.get('photo'):
@@ -125,7 +189,7 @@ def render_checklist_item(equipment, item, idx, prefix=""):
                 uploaded_files = st.file_uploader(
                     f"📷 Upload photo(s) for: {question}",
                     type=['png', 'jpg', 'jpeg'],
-                    key=f"photo_{item_key}_{idx}",
+                    key=f"photo_{item_key}_{equip_idx}",
                     accept_multiple_files=True
                 )
                 if uploaded_files:
@@ -141,12 +205,18 @@ def render_checklist_item(equipment, item, idx, prefix=""):
             
             # Handle comment requirement
             if condition.get('comment'):
-                item_data['comment'] = st.text_area(
+                comment_key = f"comment_{item_key}_{equip_idx}"
+                
+                # Initialize session state if not exists
+                if comment_key not in st.session_state:
+                    st.session_state[comment_key] = item_data.get('comment', '')
+                    
+                comment = st.text_area(
                     f"Please provide details for: {question}",
-                    value=item_data.get('comment', ''),
-                    key=f"comment_{item_key}_{idx}",
+                    key=comment_key,
                     height=100
                 )
+                st.session_state.equipment_list[equip_idx]['inspection_data'][item_key]['comment'] = st.session_state[comment_key]
             
             # Handle action instruction
             if condition.get('action'):
@@ -156,12 +226,48 @@ def render_checklist_item(equipment, item, idx, prefix=""):
             if condition.get('follow_up'):
                 # Add indentation for follow-up questions
                 with st.container():
-                    st.markdown("")  # Add some space
                     # Create a container with padding for visual hierarchy
-                    col1, col2 = st.columns([0.1, 0.9])
+                    _, col2 = st.columns([0.05, 0.95])
                     with col2:
                         for follow_up_item in condition['follow_up']:
-                            render_checklist_item(equipment, follow_up_item, idx, prefix)
+                            render_checklist_item(equipment, follow_up_item, equip_idx, prefix)
+
+
+def find_question_text(equipment_type, item_key):
+    """Find the actual question text for a given item key"""
+    def search_checklist(checklist_items, target_id):
+        for item in checklist_items:
+            if item['id'] == target_id:
+                return item['question']
+            # Check in follow-up questions
+            if 'conditions' in item:
+                for condition in item['conditions'].values():
+                    if 'follow_up' in condition:
+                        result = search_checklist(condition['follow_up'], target_id)
+                        if result:
+                            return result
+        return None
+    
+    # Check if this is a Marvel question
+    if item_key.startswith('marvel_'):
+        # Remove marvel_ prefix and search in MARVEL checklist
+        marvel_key = item_key[7:]  # Remove 'marvel_' prefix
+        question = search_checklist(EQUIPMENT_TYPES.get('MARVEL', {}).get('checklist', []), marvel_key)
+        if question:
+            return question
+    
+    # Get the last part of the key which is the actual question ID
+    parts = item_key.split('_')
+    for i in range(len(parts)):
+        # Try different combinations starting from the end
+        for j in range(len(parts), i, -1):
+            test_id = '_'.join(parts[i:j])
+            question = search_checklist(EQUIPMENT_TYPES[equipment_type]['checklist'], test_id)
+            if question:
+                return question
+    
+    # Fallback to formatted key
+    return item_key.replace('_', ' ').title()
 
 
 def get_equipment_summary():
@@ -173,24 +279,67 @@ def get_equipment_summary():
             equip_summary = {
                 'type': equipment['type'],
                 'type_name': EQUIPMENT_TYPES[equipment['type']]['name'],
-                'serial_number': equipment.get('serial_number', ''),
+                'with_marvel': equipment.get('with_marvel', False),
                 'location': equipment.get('location', ''),
-                'issues_found': [],
+                'yes_responses': [],
+                'no_responses': [],
                 'photos_count': len(equipment.get('photos', {})),
                 'inspection_data': equipment.get('inspection_data', {}),
-                'photos': equipment.get('photos', {})
+                'photos': equipment.get('photos', {}),
+                'yes_photos': {},
+                'no_photos': {}
             }
             
-            # Check for issues (any "No" answers or comments indicating problems)
+            # Define items to exclude from No responses (these are not issues)
+            exclude_from_no = ['final_remarks', 'lights_ballast']
+            
+            # Separate Yes and No responses
             for key, data in equipment.get('inspection_data', {}).items():
                 if isinstance(data, dict):
                     answer = data.get('answer', '')
-                    if answer == 'No' or (answer and data.get('comment')):
-                        equip_summary['issues_found'].append({
+                    # Extract the base key - get the actual question ID
+                    # Keys might be like "lights_ballast" or "lights_ballast_ballast_issue"
+                    # We want to check if any part of the key is in the exclude list
+                    key_parts = key.split('_')
+                    should_exclude = False
+                    for i in range(len(key_parts)):
+                        check_key = '_'.join(key_parts[i:])
+                        if check_key in exclude_from_no:
+                            should_exclude = True
+                            break
+                    
+                    # Get the actual question text
+                    question_text = find_question_text(equipment['type'], key)
+                    
+                    if answer == 'Yes':
+                        equip_summary['yes_responses'].append({
                             'item': key,
+                            'question': question_text,
                             'answer': answer,
                             'comment': data.get('comment', '')
                         })
+                        # Collect photos for this Yes response
+                        photo_key = f"photo_{key}"
+                        for pk, pv in equipment.get('photos', {}).items():
+                            if pk.startswith(photo_key):
+                                equip_summary['yes_photos'][pk] = pv
+                    elif answer == 'No':
+                        # Only add to no_responses if it's not in the exclude list
+                        if not should_exclude:
+                            equip_summary['no_responses'].append({
+                                'item': key,
+                                'question': question_text,
+                                'answer': answer,
+                                'comment': data.get('comment', '')
+                            })
+                            # Collect photos for this No response
+                            photo_key = f"photo_{key}"
+                            for pk, pv in equipment.get('photos', {}).items():
+                                if pk.startswith(photo_key):
+                                    equip_summary['no_photos'][pk] = pv
+            
+            # For backward compatibility, keep issues_found as no_responses
+            equip_summary['issues_found'] = equip_summary['no_responses']
             
             summary.append(equip_summary)
     
@@ -199,32 +348,36 @@ def get_equipment_summary():
 
 def create_technical_report(data):
     """Generate a Professional Technical Report Word document"""
-    doc = Document()
+    # Load the template document
+    template_path = os.path.join(os.path.dirname(__file__), 'Templates', 'Report Letter Head.docx')
     
-    # Set document margins
-    sections = doc.sections
-    for section in sections:
-        section.top_margin = Inches(0.75)
-        section.bottom_margin = Inches(0.75)
-        section.left_margin = Inches(0.75)
-        section.right_margin = Inches(0.75)
-        section.header_distance = Inches(0.5)
-        section.footer_distance = Inches(0.5)
+    # Check if template exists, otherwise create new document
+    if os.path.exists(template_path):
+        doc = Document(template_path)
+    else:
+        # Fallback to creating new document if template not found
+        doc = Document()
+        # Set document margins
+        sections = doc.sections
+        for section in sections:
+            section.top_margin = Inches(0.75)
+            section.bottom_margin = Inches(0.75)
+            section.left_margin = Inches(0.75)
+            section.right_margin = Inches(0.75)
+            section.header_distance = Inches(0.5)
+            section.footer_distance = Inches(0.5)
     
-    # Check for logo and add professional header
-    logo_path = add_logo_to_doc(doc)
-    add_header_with_logo(doc, logo_path)
-    
-    # Add footer
-    add_footer(doc)
-    
-    # Add some space after header
+    # Add some space after letterhead
+    doc.add_paragraph()
     doc.add_paragraph()
     
-    # Add title with styling
-    title = doc.add_heading('TECHNICAL REPORT', 0)
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    style_heading(title, level=0)
+    # Add title manually to avoid underline
+    title_para = doc.add_paragraph()
+    title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    title_run = title_para.add_run('TECHNICAL REPORT')
+    title_run.font.size = Pt(20)
+    title_run.font.color.rgb = RGBColor(31, 71, 136)  # Halton Blue
+    title_run.font.bold = True
     
     # Add report reference and date
     ref_para = doc.add_paragraph()
@@ -233,8 +386,8 @@ def create_technical_report(data):
     ref_run.font.size = Pt(11)
     ref_run.font.color.rgb = RGBColor(100, 100, 100)
     
-    # Add a subtle line separator
-    doc.add_paragraph('_' * 85)
+    # Add minimal spacing
+    doc.add_paragraph()
     
     # GENERAL INFORMATION SECTION
     general_heading = doc.add_heading('1. GENERAL INFORMATION', level=1)
@@ -263,75 +416,160 @@ def create_technical_report(data):
     if equipment_summary:
         for idx, equip in enumerate(equipment_summary):
             # Equipment header
-            equip_title = doc.add_heading(f"{equip['type_name']} - {equip['serial_number']}", level=2)
+            marvel_status = " (With Marvel)" if equip.get('with_marvel', False) else ""
+            equip_title = doc.add_heading(f"{equip['type_name']}{marvel_status}", level=2)
             style_heading(equip_title, level=2)
             
             # Equipment info
             equip_info_para = doc.add_paragraph()
             equip_info_para.add_run(f"Location: {equip['location']}\n").font.size = Pt(11)
-            equip_info_para.add_run(f"Photos Taken: {equip['photos_count']}\n").font.size = Pt(11)
+            equip_info_para.add_run(f"Total Photos Taken: {equip['photos_count']}\n").font.size = Pt(11)
             
-            # Add equipment photos if available
-            if equip.get('photos'):
+            # YES RESPONSES SECTION
+            if equip.get('yes_responses'):
                 doc.add_paragraph()
-                photos_para = doc.add_paragraph()
-                photos_para.add_run("Inspection Photos:\n").bold = True
+                yes_heading = doc.add_paragraph()
+                yes_run = yes_heading.add_run("Positive Findings:")
+                yes_run.bold = True
+                yes_run.font.color.rgb = RGBColor(0, 128, 0)  # Green color
                 
-                # Group photos in pairs for side-by-side display
-                photo_items = list(equip['photos'].items())
-                for i in range(0, len(photo_items), 2):
-                    # Create a table for side-by-side photos
-                    photo_table = doc.add_table(rows=1, cols=2)
-                    photo_table.autofit = False
+                # Create table for yes responses
+                yes_table_data = []
+                for yes_item in equip['yes_responses']:
+                    question_text = yes_item.get('question', yes_item['item'].replace('_', ' ').title())
+                    answer_text = "YES"
+                    if yes_item['comment']:
+                        answer_text += f"\n{yes_item['comment']}"
+                    yes_table_data.append((question_text, answer_text))
+                
+                if yes_table_data:
+                    create_info_table(doc, yes_table_data, col_widths=[4, 2.5])
+                
+                # Add Yes photos if available
+                if equip.get('yes_photos'):
+                    doc.add_paragraph()
+                    yes_photos_para = doc.add_paragraph()
+                    yes_photos_para.add_run("Photos - Positive Findings:\n").bold = True
                     
-                    # First photo
-                    photo_key, photo_file = photo_items[i]
-                    cell1 = photo_table.cell(0, 0)
-                    cell1_para = cell1.paragraphs[0]
-                    cell1_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    
-                    # Reset file position and add photo
-                    photo_file.seek(0)
-                    run1 = cell1_para.add_run()
-                    run1.add_picture(photo_file, width=Inches(2.0))
-                    
-                    # Add caption
-                    caption1 = cell1.add_paragraph()
-                    caption1.add_run(photo_key.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
-                    caption1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    
-                    # Second photo (if exists)
-                    if i + 1 < len(photo_items):
-                        photo_key2, photo_file2 = photo_items[i + 1]
-                        cell2 = photo_table.cell(0, 1)
-                        cell2_para = cell2.paragraphs[0]
-                        cell2_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    # Group photos in pairs for side-by-side display
+                    photo_items = list(equip['yes_photos'].items())
+                    for i in range(0, len(photo_items), 2):
+                        # Create a table for side-by-side photos
+                        photo_table = doc.add_table(rows=1, cols=2)
+                        photo_table.autofit = False
+                        
+                        # First photo
+                        photo_key, photo_file = photo_items[i]
+                        cell1 = photo_table.cell(0, 0)
+                        cell1_para = cell1.paragraphs[0]
+                        cell1_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                         
                         # Reset file position and add photo
-                        photo_file2.seek(0)
-                        run2 = cell2_para.add_run()
-                        run2.add_picture(photo_file2, width=Inches(2.0))
+                        photo_file.seek(0)
+                        run1 = cell1_para.add_run()
+                        run1.add_picture(photo_file, width=Inches(2.0))
                         
                         # Add caption
-                        caption2 = cell2.add_paragraph()
-                        caption2.add_run(photo_key2.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
-                        caption2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    
-                    # Add spacing after photos
-                    doc.add_paragraph()
+                        caption1 = cell1.add_paragraph()
+                        caption1.add_run(photo_key.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
+                        caption1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        
+                        # Second photo (if exists)
+                        if i + 1 < len(photo_items):
+                            photo_key2, photo_file2 = photo_items[i + 1]
+                            cell2 = photo_table.cell(0, 1)
+                            cell2_para = cell2.paragraphs[0]
+                            cell2_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            
+                            # Reset file position and add photo
+                            photo_file2.seek(0)
+                            run2 = cell2_para.add_run()
+                            run2.add_picture(photo_file2, width=Inches(2.0))
+                            
+                            # Add caption
+                            caption2 = cell2.add_paragraph()
+                            caption2.add_run(photo_key2.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
+                            caption2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        
+                        # Add spacing after photos
+                        doc.add_paragraph()
             
-            # Issues found
-            if equip['issues_found']:
-                issues_para = doc.add_paragraph()
-                issues_para.add_run("Issues Identified:\n").bold = True
-                for issue in equip['issues_found']:
-                    issue_text = f"• {issue['item'].replace('_', ' ').title()}: {issue['answer']}"
-                    if issue['comment']:
-                        issue_text += f" - {issue['comment']}"
-                    issues_para.add_run(issue_text + "\n").font.size = Pt(10)
-            else:
+            # NO RESPONSES SECTION (Issues)
+            if equip.get('no_responses'):
+                doc.add_paragraph()
+                no_heading = doc.add_paragraph()
+                no_run = no_heading.add_run("Issues Identified:")
+                no_run.bold = True
+                no_run.font.color.rgb = RGBColor(255, 0, 0)  # Red color
+                
+                # Create table for no responses
+                no_table_data = []
+                for no_item in equip['no_responses']:
+                    question_text = no_item.get('question', no_item['item'].replace('_', ' ').title())
+                    answer_text = "NO"
+                    if no_item['comment']:
+                        answer_text += f"\n{no_item['comment']}"
+                    no_table_data.append((question_text, answer_text))
+                
+                if no_table_data:
+                    create_info_table(doc, no_table_data, col_widths=[4, 2.5])
+                
+                # Add No photos if available
+                if equip.get('no_photos'):
+                    doc.add_paragraph()
+                    no_photos_para = doc.add_paragraph()
+                    no_photos_para.add_run("Photos - Issues:\n").bold = True
+                    
+                    # Group photos in pairs for side-by-side display
+                    photo_items = list(equip['no_photos'].items())
+                    for i in range(0, len(photo_items), 2):
+                        # Create a table for side-by-side photos
+                        photo_table = doc.add_table(rows=1, cols=2)
+                        photo_table.autofit = False
+                        
+                        # First photo
+                        photo_key, photo_file = photo_items[i]
+                        cell1 = photo_table.cell(0, 0)
+                        cell1_para = cell1.paragraphs[0]
+                        cell1_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        
+                        # Reset file position and add photo
+                        photo_file.seek(0)
+                        run1 = cell1_para.add_run()
+                        run1.add_picture(photo_file, width=Inches(2.0))
+                        
+                        # Add caption
+                        caption1 = cell1.add_paragraph()
+                        caption1.add_run(photo_key.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
+                        caption1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        
+                        # Second photo (if exists)
+                        if i + 1 < len(photo_items):
+                            photo_key2, photo_file2 = photo_items[i + 1]
+                            cell2 = photo_table.cell(0, 1)
+                            cell2_para = cell2.paragraphs[0]
+                            cell2_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            
+                            # Reset file position and add photo
+                            photo_file2.seek(0)
+                            run2 = cell2_para.add_run()
+                            run2.add_picture(photo_file2, width=Inches(2.0))
+                            
+                            # Add caption
+                            caption2 = cell2.add_paragraph()
+                            caption2.add_run(photo_key2.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
+                            caption2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        
+                        # Add spacing after photos
+                        doc.add_paragraph()
+            
+            # If no issues found at all
+            if not equip.get('no_responses'):
+                doc.add_paragraph()
                 para = doc.add_paragraph()
-                para.add_run("No issues identified during inspection.").font.size = Pt(11)
+                no_issues_run = para.add_run("No issues identified during inspection.")
+                no_issues_run.font.size = Pt(11)
+                no_issues_run.font.color.rgb = RGBColor(0, 128, 0)  # Green color
             
             # Add spacing between equipment
             if idx < len(equipment_summary) - 1:
@@ -341,7 +579,7 @@ def create_technical_report(data):
         para.add_run("No equipment inspection data available.").font.size = Pt(11)
     
     # WORK PERFORMED SECTION
-    work_heading = doc.add_heading('3. WORK PERFORMED', level=1)
+    work_heading = doc.add_heading('3. JOB DETAILS', level=1)
     style_heading(work_heading, level=1)
     
     work_para = doc.add_paragraph()
@@ -350,19 +588,9 @@ def create_technical_report(data):
     work_para.paragraph_format.line_spacing = 1.5
     work_para.paragraph_format.space_after = Pt(12)
     
-    # FINDINGS AND OBSERVATIONS SECTION
-    findings_heading = doc.add_heading('4. FINDINGS AND OBSERVATIONS', level=1)
-    style_heading(findings_heading, level=1)
-    
-    findings_para = doc.add_paragraph()
-    findings_text = findings_para.add_run(data.get('findings', ''))
-    findings_text.font.size = Pt(11)
-    findings_para.paragraph_format.line_spacing = 1.5
-    findings_para.paragraph_format.space_after = Pt(12)
-    
     # RECOMMENDATIONS SECTION
     if data.get('recommendations'):
-        rec_heading = doc.add_heading('5. RECOMMENDATIONS', level=1)
+        rec_heading = doc.add_heading('4. RECOMMENDATIONS', level=1)
         style_heading(rec_heading, level=1)
         
         rec_para = doc.add_paragraph()
@@ -370,18 +598,6 @@ def create_technical_report(data):
         rec_text.font.size = Pt(11)
         rec_para.paragraph_format.line_spacing = 1.5
         rec_para.paragraph_format.space_after = Pt(12)
-    
-    # SERVICE INFORMATION SECTION
-    service_heading = doc.add_heading('6. SERVICE INFORMATION', level=1)
-    style_heading(service_heading, level=1)
-    
-    service_info = [
-        ("Technician Name", data.get('technician_name', '')),
-        ("Technician ID", data.get('technician_id', '')),
-        ("Service Date", data.get('service_date', datetime.now().strftime('%B %d, %Y')))
-    ]
-    
-    create_info_table(doc, service_info, col_widths=[2.5, 4])
     
     # Add page break before signatures
     doc.add_page_break()
@@ -427,9 +643,19 @@ def create_technical_report(data):
     
     # Customer signature
     sig_table.cell(0, 1).text = "Customer Representative:"
-    sig_table.cell(1, 1).text = "_" * 35
-    sig_table.cell(2, 1).text = "Name: _________________________"
-    sig_table.cell(3, 1).text = "Date: _________________________"
+    
+    # Add customer signature image if available
+    if data.get('customer_signature'):
+        sig_cell = sig_table.cell(1, 1)
+        sig_para = sig_cell.paragraphs[0]
+        sig_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = sig_para.add_run()
+        run.add_picture(data.get('customer_signature'), width=Inches(1.5))
+    else:
+        sig_table.cell(1, 1).text = "_" * 35
+    
+    sig_table.cell(2, 1).text = data.get('customer_signatory', data.get('customer_name', ''))
+    sig_table.cell(3, 1).text = f"Date: {datetime.now().strftime('%B %d, %Y')}"
     
     # Style signature table
     for row in sig_table.rows:
@@ -448,7 +674,7 @@ def create_technical_report(data):
     note_para = doc.add_paragraph()
     note_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
     note_text = note_para.add_run(
-        "This report is confidential and proprietary to Halton Foodservice KSA.\n"
+        "This report is confidential and proprietary to Halton Company Saudi Arabia Ltd.\n"
         "For service inquiries, please contact our Service Department."
     )
     note_text.font.size = Pt(9)
@@ -510,13 +736,18 @@ def main():
     st.markdown("### Equipment Inspection")
     
     # Number of equipment to inspect
+    def update_equipment_count():
+        # This callback ensures equipment list updates properly
+        pass
+    
     num_equipment = st.number_input(
         "Number of Equipment to Inspect",
         min_value=1,
         max_value=10,
         value=len(st.session_state.equipment_list) if st.session_state.equipment_list else 1,
         step=1,
-        key="num_equipment"
+        key="num_equipment",
+        on_change=update_equipment_count
     )
     
     # Initialize equipment list if needed
@@ -529,7 +760,7 @@ def main():
                 st.session_state.equipment_list.append({
                     'id': equipment_id,
                     'type': '',
-                    'serial_number': '',
+                    'with_marvel': False,
                     'location': '',
                     'inspection_data': {},
                     'photos': {}
@@ -545,26 +776,44 @@ def main():
             
             with col1:
                 # Equipment type selection
-                equipment['type'] = st.selectbox(
+                equip_type_key = f"equip_type_{idx}"
+                # Initialize if not exists
+                if equip_type_key not in st.session_state:
+                    st.session_state[equip_type_key] = equipment.get('type', '')
+                    
+                st.selectbox(
                     "Equipment Type*",
                     options=[''] + list(EQUIPMENT_TYPES.keys()),
                     format_func=lambda x: EQUIPMENT_TYPES[x]["name"] if x else "Select equipment type",
-                    index=([''] + list(EQUIPMENT_TYPES.keys())).index(equipment.get('type', '')),
-                    key=f"equip_type_{idx}"
+                    key=equip_type_key
                 )
+                # Update the equipment data from session state
+                equipment['type'] = st.session_state[equip_type_key]
                 
-                equipment['serial_number'] = st.text_input(
-                    "Serial Number/ID*",
-                    value=equipment.get('serial_number', ''),
-                    key=f"serial_{idx}"
+                marvel_key = f"with_marvel_{idx}"
+                # Initialize if not exists
+                if marvel_key not in st.session_state:
+                    st.session_state[marvel_key] = equipment.get('with_marvel', False)
+                    
+                with_marvel = st.checkbox(
+                    "With Marvel System",
+                    key=marvel_key
                 )
+                # Update the equipment data from session state
+                equipment['with_marvel'] = st.session_state[marvel_key]
             
             with col2:
-                equipment['location'] = st.text_input(
+                location_key = f"location_{idx}"
+                # Initialize if not exists
+                if location_key not in st.session_state:
+                    st.session_state[location_key] = equipment.get('location', '')
+                    
+                st.text_input(
                     "Location*",
-                    value=equipment.get('location', ''),
-                    key=f"location_{idx}"
+                    key=location_key
                 )
+                # Update the equipment data from session state
+                equipment['location'] = st.session_state[location_key]
             
             # If equipment type is selected, show checklist
             if equipment['type']:
@@ -574,8 +823,19 @@ def main():
                 # Render checklist items with full conditional logic
                 for i, item in enumerate(equipment_config['checklist']):
                     if i > 0:
-                        st.markdown("---")  # Add a separator between questions
+                        st.markdown("<hr style='margin: 0.5rem 0;'>", unsafe_allow_html=True)  # Thinner separator
                     render_checklist_item(equipment, item, idx)
+                
+                # If "With Marvel" is checked, add Marvel checklist
+                if equipment.get('with_marvel', False):
+                    st.markdown("#### Marvel System Checklist")
+                    marvel_config = EQUIPMENT_TYPES.get('MARVEL', {})
+                    if marvel_config and 'checklist' in marvel_config:
+                        for i, item in enumerate(marvel_config['checklist']):
+                            if i > 0:
+                                st.markdown("<hr style='margin: 0.5rem 0;'>", unsafe_allow_html=True)
+                            # Add prefix to distinguish Marvel questions
+                            render_checklist_item(equipment, item, idx, prefix="marvel_")
     
     # Continue with the rest of the form
     with st.form("technical_report_form"):
@@ -584,23 +844,16 @@ def main():
         work_performed = st.text_area(
             "Describe Work Performed*",
             placeholder="Detail all maintenance, repairs, or services completed...",
-            height=150
+            height=120
         )
         
-        # Findings Section
-        st.markdown("### Findings and Observations")
-        findings = st.text_area(
-            "Findings and Observations*",
-            placeholder="Document any issues found, equipment condition, etc...",
-            height=150
-        )
         
         # Recommendations Section
         st.markdown("### Recommendations")
         recommendations = st.text_area(
             "Recommendations",
             placeholder="Suggest any follow-up actions, parts needed, or future maintenance...",
-            height=100
+            height=80
         )
         
         # Technician Information Section
@@ -629,8 +882,8 @@ def main():
                 background_color="#FFFFFF",
                 background_image=None,
                 update_streamlit=True,
-                height=150,
-                width=500,
+                height=120,
+                width=450,
                 drawing_mode="freedraw",
                 point_display_radius=0,
                 display_toolbar=True,
@@ -645,7 +898,54 @@ def main():
         if canvas_result.image_data is not None:
             # Check if canvas has any drawing (non-transparent pixels)
             if np.any(canvas_result.image_data[:,:,3] > 0):
-                st.success("✅ Signature captured")
+                st.success("✅ Technician signature captured")
+        
+        # Customer Signature Section
+        st.markdown("### Customer Signature")
+        col3, col4 = st.columns(2)
+        
+        with col3:
+            # Customer name field - default to customer name from general info
+            st.text_input(
+                "Customer Representative Name",
+                value=st.session_state.get('customer_name', ''),
+                placeholder="Enter customer representative name",
+                key="customer_signatory"
+            )
+        
+        with col4:
+            st.markdown("#### ")  # Spacing
+            
+        st.markdown("Please have the customer draw their signature below")
+        
+        # Create customer signature canvas
+        col5, col6 = st.columns([4, 1])
+        
+        with col5:
+            customer_canvas_result = st_canvas(
+                fill_color="rgba(255, 255, 255, 0)",  # Transparent fill
+                stroke_width=3,
+                stroke_color="#000000",
+                background_color="#FFFFFF",
+                background_image=None,
+                update_streamlit=True,
+                height=120,
+                width=450,
+                drawing_mode="freedraw",
+                point_display_radius=0,
+                display_toolbar=True,
+                key="customer_signature_canvas",
+            )
+        
+        with col6:
+            st.markdown("### ")  # Add spacing
+            st.info("Use the trash icon in the canvas toolbar to clear")
+        
+        # Check if customer signature is drawn
+        if customer_canvas_result.image_data is not None:
+            # Check if canvas has any drawing (non-transparent pixels)
+            if np.any(customer_canvas_result.image_data[:,:,3] > 0):
+                st.success("✅ Customer signature captured")
         
         # Submit button
         submitted = st.form_submit_button("Generate Report", type="primary")
@@ -670,7 +970,6 @@ def main():
                 "Contact Number": contact_number,
                 "Visit Type": visit_type,
                 "Work Performed": work_performed,
-                "Findings": findings,
                 "Technician Name": technician_name,
                 "Technician ID": technician_id
             }
@@ -683,8 +982,6 @@ def main():
                 equip_name = f"Equipment #{idx + 1}"
                 if not equipment.get('type'):
                     equipment_errors.append(f"{equip_name}: Equipment type is required")
-                elif not equipment.get('serial_number'):
-                    equipment_errors.append(f"{equip_name}: Serial number is required")
                 elif not equipment.get('location'):
                     equipment_errors.append(f"{equip_name}: Location is required")
             
@@ -728,6 +1025,32 @@ def main():
                     img_bytes.seek(0)
                     signature_img = img_bytes
             
+            # Process customer signature from canvas
+            customer_signature_img = None
+            if customer_canvas_result.image_data is not None and np.any(customer_canvas_result.image_data[:,:,3] > 0):
+                # Convert canvas to image
+                cust_sig_image = Image.fromarray(customer_canvas_result.image_data.astype('uint8'), 'RGBA')
+                
+                # Create white background
+                white_bg = Image.new('RGB', cust_sig_image.size, 'white')
+                white_bg.paste(cust_sig_image, mask=cust_sig_image.split()[3])
+                
+                # Find the bounding box of the signature
+                bbox = white_bg.getbbox()
+                if bbox:
+                    # Crop to signature
+                    cropped = white_bg.crop(bbox)
+                    
+                    # Resize if too large
+                    max_width, max_height = 200, 80
+                    cropped.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+                    
+                    # Convert to bytes
+                    img_bytes = io.BytesIO()
+                    cropped.save(img_bytes, format='PNG')
+                    img_bytes.seek(0)
+                    customer_signature_img = img_bytes
+            
             # Collect all data
             report_data = {
                     'customer_name': customer_name,
@@ -741,12 +1064,13 @@ def main():
                     'equipment_inspection': get_equipment_summary(),
                     'equipment_list': st.session_state.equipment_list,
                     'work_performed': work_performed,
-                    'findings': findings,
                     'recommendations': recommendations,
                     'technician_name': technician_name,
                     'technician_id': technician_id,
                     'service_date': service_date.strftime('%Y-%m-%d'),
-                    'technician_signature': signature_img
+                    'technician_signature': signature_img,
+                    'customer_signatory': st.session_state.get('customer_signatory', customer_name),
+                    'customer_signature': customer_signature_img
             }
             
             # Store data in session state for download outside form
@@ -782,7 +1106,21 @@ def main():
             
             # Option to generate another report
             if st.button("Generate Another Report", type="secondary"):
+                # Clear all session state data for a fresh start
                 st.session_state.report_generated = False
+                st.session_state.equipment_list = []
+                st.session_state.report_data = {}
+                # Clear all widget keys
+                keys_to_clear = []
+                for key in st.session_state.keys():
+                    if (key.startswith('q_') or key.startswith('comment_') or 
+                        key.startswith('equip_type_') or key.startswith('with_marvel_') or 
+                        key.startswith('location_') or key.startswith('photo_') or
+                        key == 'customer_signatory' or key == 'customer_signature_canvas' or
+                        key == 'signature_canvas'):
+                        keys_to_clear.append(key)
+                for key in keys_to_clear:
+                    del st.session_state[key]
                 st.rerun()
                 
         except Exception as e:
