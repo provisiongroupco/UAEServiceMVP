@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Signature Pad</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1f4788;
+            text-align: center;
+        }
+        #signatureCanvas {
+            border: 2px solid #1f4788;
+            border-radius: 5px;
+            display: block;
+            margin: 20px auto;
+            touch-action: none;
+            background: white;
+        }
+        .buttons {
+            text-align: center;
+            margin-top: 20px;
+        }
+        button {
+            background: #1f4788;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #2c5aa0;
+        }
+        .clear-btn {
+            background: #dc3545;
+        }
+        .clear-btn:hover {
+            background: #c82333;
+        }
+        .instructions {
+            text-align: center;
+            color: #666;
+            margin: 10px 0;
+        }
+        #downloadLink {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        #downloadLink a {
+            color: #1f4788;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Create Your Signature</h1>
+        <p class="instructions">Use your mouse, finger, or stylus to sign below</p>
+        
+        <canvas id="signatureCanvas" width="500" height="200"></canvas>
+        
+        <div class="buttons">
+            <button onclick="clearSignature()" class="clear-btn">Clear</button>
+            <button onclick="saveSignature()">Save Signature</button>
+        </div>
+        
+        <div id="downloadLink">
+            <p>✅ Signature saved! Right-click the link below and choose "Save link as..."</p>
+            <a id="download" download="signature.png" href="">Download Signature</a>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('signatureCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        // Set canvas size for mobile
+        function resizeCanvas() {
+            const containerWidth = document.querySelector('.container').offsetWidth - 40;
+            if (window.innerWidth < 600) {
+                canvas.width = containerWidth;
+                canvas.height = 150;
+            }
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Drawing functions
+        function startDrawing(e) {
+            isDrawing = true;
+            [lastX, lastY] = getCoordinates(e);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const [currentX, currentY] = getCoordinates(e);
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(currentX, currentY);
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+            
+            [lastX, lastY] = [currentX, currentY];
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function getCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            if (e.touches) {
+                return [
+                    e.touches[0].clientX - rect.left,
+                    e.touches[0].clientY - rect.top
+                ];
+            }
+            return [
+                e.clientX - rect.left,
+                e.clientY - rect.top
+            ];
+        }
+
+        // Mouse events
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        // Touch events
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startDrawing(e);
+        });
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            draw(e);
+        });
+        canvas.addEventListener('touchend', stopDrawing);
+
+        // Clear signature
+        function clearSignature() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('downloadLink').style.display = 'none';
+        }
+
+        // Save signature
+        function saveSignature() {
+            // Create a new canvas with white background
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // Get the bounding box of the signature
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const bounds = getBounds(imageData);
+            
+            if (bounds.width === 0 || bounds.height === 0) {
+                alert('Please draw your signature first!');
+                return;
+            }
+            
+            // Set temp canvas size to cropped signature
+            tempCanvas.width = bounds.width + 20;
+            tempCanvas.height = bounds.height + 20;
+            
+            // Fill with white background
+            tempCtx.fillStyle = 'white';
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // Draw the cropped signature
+            tempCtx.drawImage(
+                canvas,
+                bounds.left, bounds.top, bounds.width, bounds.height,
+                10, 10, bounds.width, bounds.height
+            );
+            
+            // Convert to PNG and create download link
+            const dataURL = tempCanvas.toDataURL('image/png');
+            const downloadLink = document.getElementById('download');
+            downloadLink.href = dataURL;
+            
+            // Show download link
+            document.getElementById('downloadLink').style.display = 'block';
+        }
+
+        // Get bounds of drawn content
+        function getBounds(imageData) {
+            const data = imageData.data;
+            const width = imageData.width;
+            const height = imageData.height;
+            
+            let minX = width;
+            let minY = height;
+            let maxX = 0;
+            let maxY = 0;
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const alpha = data[(y * width + x) * 4 + 3];
+                    if (alpha > 0) {
+                        minX = Math.min(minX, x);
+                        minY = Math.min(minY, y);
+                        maxX = Math.max(maxX, x);
+                        maxY = Math.max(maxY, y);
+                    }
+                }
+            }
+            
+            return {
+                left: minX,
+                top: minY,
+                width: maxX - minX,
+                height: maxY - minY
+            };
+        }
+    </script>
+</body>
+</html>

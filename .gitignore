@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Streamlit
+.streamlit/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated reports
+*.docx
+*.doc
+
+# Temporary files
+*.tmp
+*.temp
+~$*
+
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.local
+
+# Assets (keep the directory but not necessarily all files)
+# assets/*.png
+# assets/*.jpg
+# Uncomment above if you want to exclude images
