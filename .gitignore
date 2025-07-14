@@ -22,9 +22,12 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Generated reports
+# Generated reports (but keep template files)
 *.docx
 *.doc
+# Keep template files
+!Templates/*.docx
+!Templates/*.doc
 
 # Temporary files
 *.tmp

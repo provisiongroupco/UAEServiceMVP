@@ -384,11 +384,22 @@ def get_kitchen_summary():
 
 def create_technical_report(data):
     """Generate a Professional Technical Report Word document"""
-    # Load the template document
-    template_path = os.path.join(os.path.dirname(__file__), 'Templates', 'Report Letter Head.docx')
+    # Load the template document - try multiple possible paths
+    possible_paths = [
+        os.path.join(os.path.dirname(__file__), 'Templates', 'Report Letter Head.docx'),
+        os.path.join(os.getcwd(), 'Templates', 'Report Letter Head.docx'),
+        os.path.join('Templates', 'Report Letter Head.docx'),
+        'Templates/Report Letter Head.docx'
+    ]
+    
+    template_path = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            template_path = path
+            break
     
     # Check if template exists, otherwise create new document
-    if os.path.exists(template_path):
+    if template_path:
         doc = Document(template_path)
     else:
         # Fallback to creating new document if template not found
