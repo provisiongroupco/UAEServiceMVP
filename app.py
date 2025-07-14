@@ -5,10 +5,9 @@ from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
 import io
+import os
 from PIL import Image
 import base64
-from streamlit_drawable_canvas import st_canvas
-import numpy as np
 from utils import (add_header_with_logo, add_footer, style_heading, 
                   create_info_table, add_logo_to_doc, set_cell_margins)
 
@@ -362,49 +361,12 @@ def main():
         # Signature Section
         st.markdown("### Technician Signature")
         
-        # Initialize signature variables
-        signature_file = None
-        signature_img = None
-        
         # Create tabs for signature options
-        sig_tab1, sig_tab2 = st.tabs(["Draw Signature", "Upload Signature"])
+        sig_tab1, sig_tab2 = st.tabs(["Upload Signature", "Create Signature"])
+        
+        signature_file = None
         
         with sig_tab1:
-            st.markdown("Draw your signature below:")
-            
-            # Create columns for canvas and controls
-            canvas_col, control_col = st.columns([3, 1])
-            
-            with control_col:
-                # Clear button outside the form
-                if 'clear_canvas' not in st.session_state:
-                    st.session_state.clear_canvas = False
-                    
-                clear_clicked = st.button("Clear", key="clear_btn")
-                if clear_clicked:
-                    st.session_state.clear_canvas = not st.session_state.clear_canvas
-            
-            with canvas_col:
-                # Create the signature canvas
-                canvas_result = st_canvas(
-                    fill_color="rgba(255, 255, 255, 0)",
-                    stroke_width=3,
-                    stroke_color="#000000",
-                    background_color="#FFFFFF",
-                    height=150,
-                    width=400,
-                    drawing_mode="freedraw",
-                    key=f"sig_canvas_{st.session_state.get('clear_canvas', False)}",
-                )
-                
-                # Store canvas data in session state
-                if canvas_result.image_data is not None:
-                    st.session_state.signature_canvas = canvas_result.image_data
-                    # Check if canvas has any drawing
-                    if np.any(canvas_result.image_data[:,:,3] > 0):
-                        st.success("✅ Signature captured")
-        
-        with sig_tab2:
             st.markdown("Upload a signature image file")
             signature_file = st.file_uploader(
                 "Choose signature image",
@@ -419,6 +381,29 @@ def main():
                     st.image(signature_file, width=200, caption="Your signature")
                 with col2:
                     st.info("✅ Signature uploaded successfully")
+        
+        with sig_tab2:
+            st.markdown("#### Create a signature using our signature pad")
+            st.markdown("""
+            1. Open the [Signature Pad](signature_pad.html) in a new tab
+            2. Draw your signature using mouse or touch
+            3. Click 'Save Signature' and download the image
+            4. Upload the downloaded signature using the 'Upload Signature' tab
+            """)
+            
+            # Check if signature pad file exists
+            if os.path.exists('signature_pad.html'):
+                with open('signature_pad.html', 'r') as f:
+                    html_content = f.read()
+                
+                # Provide download button for the HTML file
+                st.download_button(
+                    label="📥 Download Signature Pad (HTML)",
+                    data=html_content,
+                    file_name="signature_pad.html",
+                    mime="text/html",
+                    help="Download and open this file in your browser to create a signature"
+                )
         
         # Submit button
         submitted = st.form_submit_button("Generate Report", type="primary")
@@ -444,22 +429,9 @@ def main():
             if missing_fields:
                 st.error(f"Please fill in the following required fields: {', '.join(missing_fields)}")
             else:
-                # Process signature
+                # Process signature if uploaded
                 signature_img = None
-                
-                # Check for drawn signature first
-                if hasattr(st.session_state, 'signature_canvas') and np.any(st.session_state.signature_canvas[:,:,3] > 0):
-                    # Convert canvas data to PIL Image
-                    canvas_img = Image.fromarray(st.session_state.signature_canvas.astype('uint8'), 'RGBA')
-                    # Convert to RGB (remove alpha channel)
-                    rgb_img = Image.new('RGB', canvas_img.size, (255, 255, 255))
-                    rgb_img.paste(canvas_img, mask=canvas_img.split()[3])
-                    # Convert to bytes
-                    img_byte_arr = io.BytesIO()
-                    rgb_img.save(img_byte_arr, format='PNG')
-                    signature_img = img_byte_arr.getvalue()
-                # Otherwise check for uploaded signature
-                elif signature_file is not None:
+                if signature_file is not None:
                     signature_img = process_uploaded_signature(signature_file)
                 
                 # Collect all data
