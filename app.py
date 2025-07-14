@@ -9,6 +9,10 @@ import os
 from PIL import Image
 from streamlit_drawable_canvas import st_canvas
 import numpy as np
+import json
+import base64
+import binascii
+import urllib.parse
 from utils import (style_heading, create_info_table, set_cell_margins)
 from equipment_config import EQUIPMENT_TYPES
 
@@ -382,6 +386,197 @@ def get_kitchen_summary():
     return summary
 
 
+def collect_form_data():
+    """Collect all form data from session state for sharing"""
+    try:
+        form_data = {
+            'basic_info': {
+                'customer_name': st.session_state.get('customer_name', ''),
+                'project_name': st.session_state.get('project_name', ''),
+                'contact_person': st.session_state.get('contact_person', ''),
+                'outlet_location': st.session_state.get('outlet_location', ''),
+                'contact_number': st.session_state.get('contact_number', ''),
+                'visit_type': st.session_state.get('visit_type', ''),
+                'visit_class': st.session_state.get('visit_class', ''),
+                'report_date': st.session_state.get('report_date', datetime.now()).isoformat() if st.session_state.get('report_date') else None,
+                'work_performed': st.session_state.get('work_performed', ''),
+                'recommendations': st.session_state.get('recommendations', ''),
+                'technician_name': st.session_state.get('technician_name', ''),
+                'technician_id': st.session_state.get('technician_id', ''),
+                'service_date': st.session_state.get('service_date', datetime.now()).isoformat() if st.session_state.get('service_date') else None,
+            },
+            'kitchen_data': {
+                'num_kitchens': st.session_state.get('num_kitchens', 1),
+                'kitchen_list': []
+            }
+        }
+        
+        # Collect kitchen and equipment data (excluding photos and signatures for size reasons)
+        for kitchen in st.session_state.get('kitchen_list', []):
+            kitchen_data = {
+                'name': kitchen.get('name', ''),
+                'equipment_list': []
+            }
+            
+            for equipment in kitchen.get('equipment_list', []):
+                equipment_data = {
+                    'type': equipment.get('type', ''),
+                    'with_marvel': equipment.get('with_marvel', False),
+                    'location': equipment.get('location', ''),
+                    'inspection_data': {}
+                }
+                
+                # Include inspection answers but exclude photos
+                for key, data in equipment.get('inspection_data', {}).items():
+                    if isinstance(data, dict):
+                        equipment_data['inspection_data'][key] = {
+                            'answer': data.get('answer', ''),
+                            'comment': data.get('comment', '')
+                        }
+                
+                kitchen_data['equipment_list'].append(equipment_data)
+            
+            form_data['kitchen_data']['kitchen_list'].append(kitchen_data)
+    
+        return form_data
+    except Exception as e:
+        st.error(f"Error collecting form data: {str(e)}")
+        return None
+
+
+def encode_form_data_to_url(form_data):
+    """Encode form data to a URL-safe string"""
+    try:
+        # Convert to JSON and compress
+        json_str = json.dumps(form_data, separators=(',', ':'))
+        
+        # Base64 encode for URL safety
+        encoded_bytes = base64.urlsafe_b64encode(json_str.encode('utf-8'))
+        encoded_str = encoded_bytes.decode('utf-8')
+        
+        # URL encode for additional safety
+        url_encoded = urllib.parse.quote(encoded_str)
+        
+        return url_encoded
+    except Exception as e:
+        st.error(f"Error encoding form data: {str(e)}")
+        return None
+
+
+def decode_form_data_from_url(encoded_data):
+    """Decode form data from URL parameter"""
+    try:
+        # Basic validation
+        if not encoded_data or len(encoded_data) < 10:
+            st.error("Invalid share link: Data parameter is too short")
+            return None
+        
+        if len(encoded_data) > 10000:  # Reasonable limit for URL length
+            st.error("Invalid share link: Data parameter is too long")
+            return None
+        
+        # URL decode
+        url_decoded = urllib.parse.unquote(encoded_data)
+        
+        # Base64 decode
+        decoded_bytes = base64.urlsafe_b64decode(url_decoded.encode('utf-8'))
+        json_str = decoded_bytes.decode('utf-8')
+        
+        # Parse JSON
+        form_data = json.loads(json_str)
+        
+        # Validate structure
+        if not isinstance(form_data, dict):
+            st.error("Invalid share link: Data format is incorrect")
+            return None
+            
+        if 'basic_info' not in form_data or 'kitchen_data' not in form_data:
+            st.error("Invalid share link: Missing required data sections")
+            return None
+        
+        return form_data
+    except base64.binascii.Error:
+        st.error("Invalid share link: Data encoding is corrupted")
+        return None
+    except json.JSONDecodeError:
+        st.error("Invalid share link: Data format is corrupted")
+        return None
+    except Exception as e:
+        st.error(f"Error decoding share link: {str(e)}")
+        return None
+
+
+def restore_form_data(form_data):
+    """Restore form data to session state"""
+    try:
+        # Debug: Show what we're restoring
+        st.sidebar.write("🔄 Restoring data to session state...")
+        
+        # Restore basic info
+        basic_info = form_data.get('basic_info', {})
+        restored_count = 0
+        for key, value in basic_info.items():
+            if value:  # Only restore non-empty values
+                if key in ['report_date', 'service_date'] and value:
+                    # Parse ISO date strings back to datetime objects
+                    st.session_state[key] = datetime.fromisoformat(value).date()
+                else:
+                    st.session_state[key] = value
+                restored_count += 1
+        
+        st.sidebar.write(f"📝 Restored {restored_count} basic info fields")
+        
+        # Restore kitchen data
+        kitchen_data = form_data.get('kitchen_data', {})
+        if kitchen_data.get('num_kitchens'):
+            st.session_state['num_kitchens'] = kitchen_data['num_kitchens']
+        
+        # Restore kitchen list
+        if kitchen_data.get('kitchen_list'):
+            st.session_state.kitchen_list = []
+            for kitchen_info in kitchen_data['kitchen_list']:
+                kitchen = {
+                    'id': f"kitchen_{len(st.session_state.kitchen_list)}_{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                    'name': kitchen_info.get('name', ''),
+                    'equipment_list': []
+                }
+                
+                for equipment_info in kitchen_info.get('equipment_list', []):
+                    equipment = {
+                        'id': f"equipment_{len(kitchen['equipment_list'])}_{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                        'type': equipment_info.get('type', ''),
+                        'with_marvel': equipment_info.get('with_marvel', False),
+                        'location': equipment_info.get('location', ''),
+                        'inspection_data': equipment_info.get('inspection_data', {}),
+                        'photos': {}  # Photos are not shared via links
+                    }
+                    kitchen['equipment_list'].append(equipment)
+                
+                st.session_state.kitchen_list.append(kitchen)
+        
+        return True
+    except Exception as e:
+        st.error(f"Error restoring form data: {str(e)}")
+        return False
+
+
+def generate_shareable_link():
+    """Generate a shareable link with current form data"""
+    form_data = collect_form_data()
+    if not form_data:
+        st.error("Failed to collect form data for sharing")
+        return None
+        
+    encoded_data = encode_form_data_to_url(form_data)
+    
+    if encoded_data:
+        # Use the actual Streamlit app URL
+        base_url = "https://ksaservicemvp.streamlit.app"
+        share_url = f"{base_url}?data={encoded_data}"
+        return share_url
+    return None
+
+
 def create_technical_report(data):
     """Generate a Professional Technical Report Word document"""
     # Load the template document - try multiple possible paths
@@ -745,6 +940,36 @@ def create_technical_report(data):
     return doc_bytes
 
 def main():
+    # Check for shared form data in URL parameters
+    query_params = st.query_params
+    
+    # Debug: Show what parameters we have
+    if query_params:
+        st.sidebar.write("🔍 URL Parameters detected:", dict(query_params))
+    
+    if 'data' in query_params and not st.session_state.get('data_restored', False):
+        st.info("🔄 Restoring form data from shared link...")
+        encoded_data = query_params['data']
+        
+        # Debug: Show encoded data length
+        st.sidebar.write(f"📊 Encoded data length: {len(encoded_data)} characters")
+        
+        decoded_data = decode_form_data_from_url(encoded_data)
+        if decoded_data:
+            # Debug: Show what data we decoded
+            st.sidebar.write("✅ Data decoded successfully")
+            st.sidebar.write(f"Customer: {decoded_data.get('basic_info', {}).get('customer_name', 'N/A')}")
+            st.sidebar.write(f"Kitchens: {decoded_data.get('kitchen_data', {}).get('num_kitchens', 0)}")
+            
+            if restore_form_data(decoded_data):
+                st.success("✅ Form data restored from shared link!")
+                st.session_state['data_restored'] = True
+                st.rerun()
+            else:
+                st.error("❌ Failed to restore form data from link")
+        else:
+            st.error("❌ Failed to decode shared link data")
+    
     # Header
     st.markdown('<h1 class="main-header">Halton KSA Service Reports</h1>', unsafe_allow_html=True)
     
@@ -1262,6 +1487,29 @@ def main():
             st.session_state.report_generated = True
             st.session_state.saved_customer_name = customer_name
             st.session_state.saved_report_date = date
+    
+    # Form sharing section (outside of form)
+    st.markdown("### 🔗 Share Form Data")
+    st.markdown("Save your current form inputs as a shareable link. Photos and signatures are not included.")
+    
+    col_share1, col_share2 = st.columns([1, 1])
+    with col_share1:
+        if st.button("🔗 Generate Shareable Link", type="secondary"):
+            share_url = generate_shareable_link()
+            if share_url:
+                st.session_state['generated_share_url'] = share_url
+                st.success("Link generated successfully!")
+            else:
+                st.error("Failed to generate shareable link")
+    
+    with col_share2:
+        if st.session_state.get('generated_share_url'):
+            st.text_area(
+                "Shareable Link (Copy and share):",
+                value=st.session_state['generated_share_url'],
+                height=100,
+                help="Copy this URL and share it. When opened, it will prefill the form with current data."
+            )
     
     # Handle report download outside of form
     if st.session_state.get('report_generated', False):
