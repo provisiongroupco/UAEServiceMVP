@@ -122,16 +122,22 @@ def render_checklist_item(equipment, item, idx, prefix=""):
             # Handle photo requirement
             if condition.get('photo'):
                 photo_key = f"photo_{item_key}"
-                uploaded_file = st.file_uploader(
-                    f"📷 Upload photo for: {question}",
+                uploaded_files = st.file_uploader(
+                    f"📷 Upload photo(s) for: {question}",
                     type=['png', 'jpg', 'jpeg'],
-                    key=f"photo_{item_key}_{idx}"
+                    key=f"photo_{item_key}_{idx}",
+                    accept_multiple_files=True
                 )
-                if uploaded_file:
+                if uploaded_files:
                     if 'photos' not in equipment:
                         equipment['photos'] = {}
-                    equipment['photos'][photo_key] = uploaded_file
-                    st.success("✅ Photo uploaded")
+                    # Store multiple photos with numbered keys
+                    for i, uploaded_file in enumerate(uploaded_files):
+                        if len(uploaded_files) == 1:
+                            equipment['photos'][photo_key] = uploaded_file
+                        else:
+                            equipment['photos'][f"{photo_key}_{i+1}"] = uploaded_file
+                    st.success(f"✅ {len(uploaded_files)} photo(s) uploaded")
             
             # Handle comment requirement
             if condition.get('comment'):
@@ -171,7 +177,8 @@ def get_equipment_summary():
                 'location': equipment.get('location', ''),
                 'issues_found': [],
                 'photos_count': len(equipment.get('photos', {})),
-                'inspection_data': equipment.get('inspection_data', {})
+                'inspection_data': equipment.get('inspection_data', {}),
+                'photos': equipment.get('photos', {})
             }
             
             # Check for issues (any "No" answers or comments indicating problems)
@@ -263,6 +270,55 @@ def create_technical_report(data):
             equip_info_para = doc.add_paragraph()
             equip_info_para.add_run(f"Location: {equip['location']}\n").font.size = Pt(11)
             equip_info_para.add_run(f"Photos Taken: {equip['photos_count']}\n").font.size = Pt(11)
+            
+            # Add equipment photos if available
+            if equip.get('photos'):
+                doc.add_paragraph()
+                photos_para = doc.add_paragraph()
+                photos_para.add_run("Inspection Photos:\n").bold = True
+                
+                # Group photos in pairs for side-by-side display
+                photo_items = list(equip['photos'].items())
+                for i in range(0, len(photo_items), 2):
+                    # Create a table for side-by-side photos
+                    photo_table = doc.add_table(rows=1, cols=2)
+                    photo_table.autofit = False
+                    
+                    # First photo
+                    photo_key, photo_file = photo_items[i]
+                    cell1 = photo_table.cell(0, 0)
+                    cell1_para = cell1.paragraphs[0]
+                    cell1_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    
+                    # Reset file position and add photo
+                    photo_file.seek(0)
+                    run1 = cell1_para.add_run()
+                    run1.add_picture(photo_file, width=Inches(2.0))
+                    
+                    # Add caption
+                    caption1 = cell1.add_paragraph()
+                    caption1.add_run(photo_key.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
+                    caption1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    
+                    # Second photo (if exists)
+                    if i + 1 < len(photo_items):
+                        photo_key2, photo_file2 = photo_items[i + 1]
+                        cell2 = photo_table.cell(0, 1)
+                        cell2_para = cell2.paragraphs[0]
+                        cell2_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        
+                        # Reset file position and add photo
+                        photo_file2.seek(0)
+                        run2 = cell2_para.add_run()
+                        run2.add_picture(photo_file2, width=Inches(2.0))
+                        
+                        # Add caption
+                        caption2 = cell2.add_paragraph()
+                        caption2.add_run(photo_key2.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
+                        caption2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    
+                    # Add spacing after photos
+                    doc.add_paragraph()
             
             # Issues found
             if equip['issues_found']:
