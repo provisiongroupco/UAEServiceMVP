@@ -1,5 +1,5 @@
 """
-Equipment inspection component for Halton KSA Service Reports
+Equipment inspection component for Service Reports
 Handles dynamic equipment forms and inspection workflows
 """
 

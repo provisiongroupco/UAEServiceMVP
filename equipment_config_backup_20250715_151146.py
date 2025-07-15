@@ -12,48 +12,45 @@ EQUIPMENT_TYPES = {
                 "question": "Are the hood lights operational?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True, "comment": False},
                     "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "n/a": {"photo": False, "comment": False}
                 }
             },
             {
                 "id": "lights_ballast",
                 "question": "Is there a ballast for the Hood lights?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "follow_up": [
                             {
                                 "id": "ballast_issue",
                                 "question": "Is there an issue with the hood light ballast?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
-                                    "no": {"photo": True, "comment": False},
-                                    "n/a": {"comment": True}
+                                    "yes": {"photo": True, "comment": True},
+                                    "no": {"photo": True, "comment": False}
                                 }
                             }
                         ]
                     },
-                    "no": {},
-                    "n/a": {"comment": True}
+                    "no": {}
                 }
             },
             {
                 "id": "capture_jet_fan",
                 "question": "Is the capture jet fan working and in good condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "extract_airflow_issue",
                 "question": "Is there an issue in the hood extract airflow?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "comment": True,
@@ -61,9 +58,9 @@ EQUIPMENT_TYPES = {
                             {
                                 "id": "extract_design_airflow",
                                 "question": "Is the extract airflow achieving the design airflow?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True, "comment": False},
                                     "no": {
                                         "photo": True,
                                         "comment": True,
@@ -71,11 +68,10 @@ EQUIPMENT_TYPES = {
                                             {
                                                 "id": "manual_damper",
                                                 "question": "Is the manual damper fully opened?",
-                                                "type": "yes_no_na",
+                                                "type": "yes_no",
                                                 "conditions": {
-                                                    "yes": {},
-                                                    "no": {"photo": True, "comment": False, "action": "Please open the damper"},
-                                                    "n/a": {"comment": True}
+                                                    "yes": {"photo": True, "comment": False},
+                                                    "no": {"photo": True, "comment": False, "action": "Please open the damper"}
                                                 }
                                             }
                                         ]
@@ -84,14 +80,13 @@ EQUIPMENT_TYPES = {
                             }
                         ]
                     },
-                    "no": {},
-                    "n/a": {"comment": True}
+                    "no": {}
                 }
             },
             {
                 "id": "supply_airflow_issue",
                 "question": "Is there an issue in the hood supply airflow?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "comment": True,
@@ -99,9 +94,9 @@ EQUIPMENT_TYPES = {
                             {
                                 "id": "supply_design_airflow",
                                 "question": "Is the supply airflow achieving the design airflow?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True, "comment": False},
                                     "no": {
                                         "photo": True,
                                         "comment": True,
@@ -109,11 +104,10 @@ EQUIPMENT_TYPES = {
                                             {
                                                 "id": "supply_manual_damper",
                                                 "question": "Is the manual damper fully opened?",
-                                                "type": "yes_no_na",
+                                                "type": "yes_no",
                                                 "conditions": {
-                                                    "yes": {},
-                                                    "no": {"photo": True, "comment": False, "action": "Please open the damper"},
-                                                    "n/a": {"comment": True}
+                                                    "yes": {"photo": True, "comment": False},
+                                                    "no": {"photo": True, "comment": False, "action": "Please open the damper"}
                                                 }
                                             }
                                         ]
@@ -122,44 +116,40 @@ EQUIPMENT_TYPES = {
                             }
                         ]
                     },
-                    "no": {},
-                    "n/a": {"comment": True}
+                    "no": {}
                 }
             },
             {
                 "id": "ksa_filters_condition",
                 "question": "Are the KSA filters in good condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "ksa_filters_in_place",
                 "question": "Are the KSA filters all in place?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "personal_supply_nozzles",
                 "question": "Are the Personal supply air nozzles in place and in good condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "other_issues",
                 "question": "Do you have any comments about the hood condition, or anything noticed wrong with the hoods?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "comment": True,
@@ -167,22 +157,21 @@ EQUIPMENT_TYPES = {
                             {
                                 "id": "issue_photos",
                                 "question": "Do you want to include pictures for the issue witnessed?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True, "comment": False},
                                     "no": {}
                                 }
                             }
                         ]
                     },
-                    "no": {},
-                    "n/a": {"comment": True}
+                    "no": {}
                 }
             },
             {
                 "id": "final_remarks",
                 "question": "Do you want to add remarks on the KVF hood checked?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {"comment": True},
                     "no": {}
@@ -196,50 +185,46 @@ EQUIPMENT_TYPES = {
             {
                 "id": "lights_operational",
                 "question": "Are the hood lights operational?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": True},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "lights_ballast",
                 "question": "Is there a ballast for the Hood lights?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "follow_up": [
                             {
                                 "id": "ballast_issue",
                                 "question": "Is there an issue with the hood light ballast?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
-                                    "no": {"photo": True, "comment": False},
-                                    "n/a": {"comment": True}
+                                    "yes": {"photo": True, "comment": True},
+                                    "no": {"photo": True, "comment": False}
                                 }
                             }
                         ]
                     },
-                    "no": {},
-                    "n/a": {"comment": True}
+                    "no": {}
                 }
             },
             {
                 "id": "capture_jet_fan",
                 "question": "Is the capture jet fan working and in good condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "extract_airflow_issue",
                 "question": "Is there an issue in the hood extract airflow?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "comment": True,
@@ -247,53 +232,48 @@ EQUIPMENT_TYPES = {
                             {
                                 "id": "extract_design_airflow",
                                 "question": "Is the extract airflow achieving the design airflow?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
-                                    "no": {"photo": True, "comment": True},
-                                    "n/a": {"comment": True}
+                                    "yes": {"photo": True, "comment": False},
+                                    "no": {"photo": True, "comment": True}
                                 }
                             }
                         ]
                     },
-                    "no": {},
-                    "n/a": {"comment": True}
+                    "no": {}
                 }
             },
             {
                 "id": "ksa_filters_condition",
                 "question": "Are the KSA filters in good condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "ksa_filters_in_place",
                 "question": "Are the KSA filters all in place?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "blank_nozzles",
                 "question": "Are the Blank nozzles in place and in good condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "other_issues",
                 "question": "Do you have any comments about the hood condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "comment": True,
@@ -301,22 +281,21 @@ EQUIPMENT_TYPES = {
                             {
                                 "id": "issue_photos",
                                 "question": "Do you want to include pictures for the issue witnessed?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True, "comment": False},
                                     "no": {}
                                 }
                             }
                         ]
                     },
-                    "no": {},
-                    "n/a": {"comment": True}
+                    "no": {}
                 }
             },
             {
                 "id": "final_remarks",
                 "question": "Do you want to add remarks on the KVI hood checked?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {"comment": True},
                     "no": {}
@@ -343,7 +322,7 @@ EQUIPMENT_TYPES = {
             {
                 "id": "alarms_registered",
                 "question": "Is there an alarm registered in the monitoring console?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "follow_up": [
@@ -362,80 +341,73 @@ EQUIPMENT_TYPES = {
             {
                 "id": "uv_power_cable",
                 "question": "Are the UV power cables in good condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "ksa_filters_in_place",
                 "question": "Are the KSA filters all in place?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "filter_magnets",
                 "question": "Are the filter magnets all in place?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "lights_operational",
                 "question": "Are the hood lights operational?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": True},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "lights_ballast",
                 "question": "Is there a ballast for the Hood lights?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "follow_up": [
                             {
                                 "id": "ballast_issue",
                                 "question": "Is there an issue with the hood light ballast?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
-                                    "no": {"photo": True, "comment": False},
-                                    "n/a": {"comment": True}
+                                    "yes": {"photo": True, "comment": True},
+                                    "no": {"photo": True, "comment": False}
                                 }
                             }
                         ]
                     },
-                    "no": {},
-                    "n/a": {"comment": True}
+                    "no": {}
                 }
             },
             {
                 "id": "capture_jet_fan",
                 "question": "Is the capture jet fan working and in good condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "extract_airflow_issue",
                 "question": "Is there an issue in the hood extract airflow?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "comment": True,
@@ -443,9 +415,9 @@ EQUIPMENT_TYPES = {
                             {
                                 "id": "extract_design_airflow",
                                 "question": "Is the extract airflow achieving the design airflow?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True, "comment": False},
                                     "no": {
                                         "photo": True,
                                         "comment": True,
@@ -453,11 +425,10 @@ EQUIPMENT_TYPES = {
                                             {
                                                 "id": "manual_damper",
                                                 "question": "Is the manual damper fully opened?",
-                                                "type": "yes_no_na",
+                                                "type": "yes_no",
                                                 "conditions": {
-                                                    "yes": {},
-                                                    "no": {"photo": True, "comment": False, "action": "Please open the damper"},
-                                                    "n/a": {"comment": True}
+                                                    "yes": {"photo": True, "comment": False},
+                                                    "no": {"photo": True, "comment": False, "action": "Please open the damper"}
                                                 }
                                             }
                                         ]
@@ -466,14 +437,13 @@ EQUIPMENT_TYPES = {
                             }
                         ]
                     },
-                    "no": {},
-                    "n/a": {"comment": True}
+                    "no": {}
                 }
             },
             {
                 "id": "supply_airflow_issue",
                 "question": "Is there an issue in the hood supply airflow?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "comment": True,
@@ -481,9 +451,9 @@ EQUIPMENT_TYPES = {
                             {
                                 "id": "supply_design_airflow",
                                 "question": "Is the supply airflow achieving the design airflow?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True, "comment": False},
                                     "no": {
                                         "photo": True,
                                         "comment": True,
@@ -491,11 +461,10 @@ EQUIPMENT_TYPES = {
                                             {
                                                 "id": "supply_manual_damper",
                                                 "question": "Is the manual damper fully opened?",
-                                                "type": "yes_no_na",
+                                                "type": "yes_no",
                                                 "conditions": {
-                                                    "yes": {},
-                                                    "no": {"photo": True, "comment": False, "action": "Please open the damper"},
-                                                    "n/a": {"comment": True}
+                                                    "yes": {"photo": True, "comment": False},
+                                                    "no": {"photo": True, "comment": False, "action": "Please open the damper"}
                                                 }
                                             }
                                         ]
@@ -504,14 +473,13 @@ EQUIPMENT_TYPES = {
                             }
                         ]
                     },
-                    "no": {},
-                    "n/a": {"comment": True}
+                    "no": {}
                 }
             },
             {
                 "id": "other_issues",
                 "question": "Do you have any comments about the hood condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "comment": True,
@@ -519,22 +487,21 @@ EQUIPMENT_TYPES = {
                             {
                                 "id": "issue_photos",
                                 "question": "Do you want to include pictures for the issue witnessed?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True, "comment": False},
                                     "no": {}
                                 }
                             }
                         ]
                     },
-                    "no": {},
-                    "n/a": {"comment": True}
+                    "no": {}
                 }
             },
             {
                 "id": "final_remarks",
                 "question": "Do you want to add remarks on the UVF hood checked?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {"comment": True},
                     "no": {}
@@ -543,62 +510,58 @@ EQUIPMENT_TYPES = {
         ]
     },
     "CMW": {
-        "name": "CMW Hood (Cold Mist)",
+        "name": "CMW Hood (Cold Mist Wash)",
         "checklist": [
             {
                 "id": "lights_operational",
                 "question": "Are the hood lights operational?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": True},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "lights_ballast",
                 "question": "Is there a ballast for the Hood lights?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "follow_up": [
                             {
                                 "id": "ballast_issue",
                                 "question": "Is there an issue with the hood light ballast?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
-                                    "no": {"photo": True, "comment": False},
-                                    "n/a": {"comment": True}
+                                    "yes": {"photo": True, "comment": True},
+                                    "no": {"photo": True, "comment": False}
                                 }
                             }
                         ]
                     },
-                    "no": {},
-                    "n/a": {"comment": True}
+                    "no": {}
                 }
             },
             {
                 "id": "capture_jet_fan",
                 "question": "Is the capture jet fan working and in good condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "supply_air_connected",
                 "question": "Does the hood have supply air connected?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "follow_up": [
                             {
                                 "id": "supply_airflow_issue",
                                 "question": "Is there an issue in the hood supply airflow?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
                                     "yes": {
                                         "comment": True,
@@ -606,9 +569,9 @@ EQUIPMENT_TYPES = {
                                             {
                                                 "id": "supply_design_airflow",
                                                 "question": "Is the supply airflow achieving the design airflow?",
-                                                "type": "yes_no_na",
+                                                "type": "yes_no",
                                                 "conditions": {
-                                                    "yes": {},
+                                                    "yes": {"photo": True, "comment": False},
                                                     "no": {
                                                         "photo": True,
                                                         "comment": True,
@@ -616,9 +579,9 @@ EQUIPMENT_TYPES = {
                                                             {
                                                                 "id": "supply_manual_damper",
                                                                 "question": "Is the manual damper fully opened?",
-                                                                "type": "yes_no_na",
+                                                                "type": "yes_no",
                                                                 "conditions": {
-                                                                    "yes": {},
+                                                                    "yes": {"photo": True, "comment": False},
                                                                     "no": {"photo": True, "comment": False, "action": "Please open the damper"}
                                                                 }
                                                             }
@@ -633,14 +596,13 @@ EQUIPMENT_TYPES = {
                             }
                         ]
                     },
-                    "no": {},
-                    "n/a": {"comment": True}
+                    "no": {}
                 }
             },
             {
                 "id": "extract_airflow_issue",
                 "question": "Is there an issue in the hood extract airflow?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "comment": True,
@@ -648,9 +610,9 @@ EQUIPMENT_TYPES = {
                             {
                                 "id": "extract_design_airflow",
                                 "question": "Is the extract airflow achieving the design airflow?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True, "comment": False},
                                     "no": {
                                         "photo": True,
                                         "comment": True,
@@ -658,11 +620,10 @@ EQUIPMENT_TYPES = {
                                             {
                                                 "id": "manual_damper",
                                                 "question": "Is the manual damper fully opened?",
-                                                "type": "yes_no_na",
+                                                "type": "yes_no",
                                                 "conditions": {
-                                                    "yes": {},
-                                                    "no": {"photo": True, "comment": False, "action": "Please open the damper"},
-                                                    "n/a": {"comment": True}
+                                                    "yes": {"photo": True, "comment": False},
+                                                    "no": {"photo": True, "comment": False, "action": "Please open the damper"}
                                                 }
                                             }
                                         ]
@@ -671,134 +632,40 @@ EQUIPMENT_TYPES = {
                             }
                         ]
                     },
-                    "no": {},
-                    "n/a": {"comment": True}
+                    "no": {}
                 }
             },
             {
                 "id": "ksa_filters_condition",
                 "question": "Are the KSA filters in good condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "ksa_filters_in_place",
                 "question": "Are the KSA filters all in place?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "personal_supply_nozzles",
                 "question": "Are the Personal supply air nozzles in place and in good condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
-                }
-            },
-            {
-                "id": "cold_mist_nozzles_fully_operational",
-                "question": "Are the cold mist nozzles fully operational and spraying?",
-                "type": "yes_no_na",
-                "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
-                }
-            },
-            {
-                "id": "solenoid_valve_cold_mist_operational",
-                "question": "Are the solenoid valve for cold mist operational?",
-                "type": "yes_no_na",
-                "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
-                }
-            },
-            {
-                "id": "pressure_switch_operational_check",
-                "question": "Is the pressure switch operational?",
-                "type": "yes_no_na",
-                "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
-                }
-            },
-            {
-                "id": "cold_mist_solenoid_coil_operational",
-                "question": "Is the cold mist solenoid coil operational?",
-                "type": "yes_no_na",
-                "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
-                }
-            },
-            {
-                "id": "pressure_adjusted_halton",
-                "question": "Is the pressure adjusted as per Halton recommended pressure?",
-                "type": "yes_no_na",
-                "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
-                }
-            },
-            {
-                "id": "hand_valve_fully_opened",
-                "question": "Is the hand valve fully opened?",
-                "type": "yes_no_na",
-                "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
-                }
-            },
-            {
-                "id": "cold_water_available",
-                "question": "Is there cold water available?",
-                "type": "yes_no_na",
-                "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
-                }
-            },
-            {
-                "id": "water_line_connected_properly",
-                "question": "Is the water line connected properly?",
-                "type": "yes_no_na",
-                "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
-                }
-            },
-            {
-                "id": "water_leakage_witnessed",
-                "question": "Is there any water leakage witnessed?",
-                "type": "yes_no_na",
-                "conditions": {
-                    "yes": {"photo": True, "comment": True},
-                    "no": {"photo": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "cold_mist_system",
                 "question": "Does the system include cold mist with hot water wash?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "photo": True,
@@ -807,31 +674,28 @@ EQUIPMENT_TYPES = {
                             {
                                 "id": "power_supply",
                                 "question": "Is there power supply available for the panel?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
                                     "yes": {},
-                                    "no": {"photo": True, "comment": True},
-                                    "n/a": {"comment": True}
+                                    "no": {"comment": True}
                                 }
                             },
                             {
-                                "id": "hot_water_supply_hoods",
-                                "question": "Is there hot water supply available for the hoods?",
-                                "type": "yes_no_na",
+                                "id": "cold_water_supply",
+                                "question": "Is there cold water supply available for the hoods?",
+                                "type": "yes_no",
                                 "conditions": {
                                     "yes": {},
-                                    "no": {"photo": True, "comment": True},
-                                    "n/a": {"comment": True}
+                                    "no": {"photo": True, "comment": True}
                                 }
                             },
                             {
-                                "id": "solenoid_valve_hot_water",
-                                "question": "Is the solenoid valve for the hot water working and in good condition?",
-                                "type": "yes_no_na",
+                                "id": "solenoid_valve",
+                                "question": "Is the solenoid valve for the cold water working and in good condition?",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
-                                    "no": {"photo": True, "comment": True},
-                                    "n/a": {"comment": True}
+                                    "yes": {"photo": True, "comment": False},
+                                    "no": {"photo": True, "comment": True}
                                 }
                             },
                             {
@@ -843,24 +707,23 @@ EQUIPMENT_TYPES = {
                             {
                                 "id": "cold_mist_nozzles_operational",
                                 "question": "Are the cold mist nozzles all operational and in good condition?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
-                                    "no": {"photo": True, "comment": True},
-                                    "n/a": {"comment": True}
+                                    "yes": {"photo": True, "comment": False},
+                                    "no": {"photo": True, "comment": True}
                                 }
                             },
                             {
                                 "id": "pressure_switch_operational",
                                 "question": "Is the pressure switch operational?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
                                     "yes": {
                                         "follow_up": [
                                             {
                                                 "id": "pressure_switch_75pa",
                                                 "question": "Is the pressure switch working on 75PA?",
-                                                "type": "yes_no_na",
+                                                "type": "yes_no",
                                                 "conditions": {
                                                     "yes": {},
                                                     "no": {"comment": True}
@@ -874,56 +737,39 @@ EQUIPMENT_TYPES = {
                             {
                                 "id": "hot_water_supply",
                                 "question": "Is the water supply available for hot water wash?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
                                     "yes": {},
-                                    "no": {"photo": True, "comment": True},
-                                    "n/a": {"comment": True}
+                                    "no": {"photo": True, "comment": True}
                                 }
                             },
                             {
                                 "id": "hot_water_nozzles",
                                 "question": "Are the hot water nozzles all working and in good condition?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
-                                    "no": {"photo": True, "comment": True},
-                                    "n/a": {"comment": True}
+                                    "yes": {"photo": True, "comment": False},
+                                    "no": {"photo": True, "comment": True}
                                 }
                             },
                             {
                                 "id": "detergent_chemical",
                                 "question": "Is the detergent chemical available and working?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {
-                                        "follow_up": [
-                                            {
-                                                "id": "detergent_chemical_full",
-                                                "question": "Is the detergent chemical tank full?",
-                                                "type": "yes_no_na",
-                                                "conditions": {
-                                                    "yes": {"photo": True},
-                                                    "no": {"photo": True},
-                                                    "n/a": {"comment": True}
-                                                }
-                                            }
-                                        ]
-                                    },
-                                    "no": {"photo": True, "comment": True},
-                                    "n/a": {"comment": True}
+                                    "yes": {"photo": True, "comment": False},
+                                    "no": {"photo": True, "comment": True}
                                 }
                             }
                         ]
                     },
-                    "no": {},
-                    "n/a": {"comment": True}
+                    "no": {}
                 }
             },
             {
                 "id": "other_issues",
                 "question": "Do you have any comments about the hood condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "comment": True,
@@ -931,22 +777,129 @@ EQUIPMENT_TYPES = {
                             {
                                 "id": "issue_photos",
                                 "question": "Do you want to include pictures for the issue witnessed?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True, "comment": False},
                                     "no": {}
                                 }
                             }
                         ]
                     },
-                    "no": {},
-                    "n/a": {"comment": True}
+                    "no": {}
                 }
             },
             {
                 "id": "final_remarks",
                 "question": "Do you want to add remarks on the CMW hood checked?",
-                "type": "yes_no_na",
+                "type": "yes_no",
+                "conditions": {
+                    "yes": {"comment": True},
+                    "no": {}
+                }
+            }
+        ]
+    },
+    "MARVEL": {
+        "name": "MARVEL System",
+        "checklist": [
+            {
+                "id": "power_supply",
+                "question": "Power supply is available for marvel control panel?",
+                "type": "yes_no",
+                "conditions": {
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
+                }
+            },
+            {
+                "id": "touch_screen_operational",
+                "question": "Marvel touch screen is operating and without alarms?",
+                "type": "yes_no",
+                "conditions": {
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
+                }
+            },
+            {
+                "id": "internal_components",
+                "question": "All internal components inside MARVEL panel are operational?",
+                "type": "yes_no",
+                "conditions": {
+                    "yes": {},
+                    "no": {"comment": True}
+                }
+            },
+            {
+                "id": "signals_vfd",
+                "question": "(0-10V) Signals are being sent from Marvel system and VFD is responding properly?",
+                "type": "yes_no",
+                "conditions": {
+                    "yes": {},
+                    "no": {"comment": True}
+                }
+            },
+            {
+                "id": "ntc_sensors",
+                "question": "All NTC sensors are working and in good condition?",
+                "type": "yes_no",
+                "conditions": {
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
+                }
+            },
+            {
+                "id": "ir_sensors",
+                "question": "All IR Sensors are working and in good condition?",
+                "type": "yes_no",
+                "conditions": {
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
+                }
+            },
+            {
+                "id": "abd_dampers",
+                "question": "ABD Dampers are operating properly and without any alarms?",
+                "type": "yes_no",
+                "conditions": {
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
+                }
+            },
+            {
+                "id": "abd_actuators",
+                "question": "All ABD Actuators are working and in good condition?",
+                "type": "yes_no",
+                "conditions": {
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
+                }
+            },
+            {
+                "id": "other_issues",
+                "question": "Do you have any comments about the MARVEL System?",
+                "type": "yes_no",
+                "conditions": {
+                    "yes": {
+                        "comment": True,
+                        "follow_up": [
+                            {
+                                "id": "issue_photos",
+                                "question": "Do you want to include pictures for the issue witnessed?",
+                                "type": "yes_no",
+                                "conditions": {
+                                    "yes": {"photo": True, "comment": False},
+                                    "no": {}
+                                }
+                            }
+                        ]
+                    },
+                    "no": {}
+                }
+            },
+            {
+                "id": "final_remarks",
+                "question": "Do you want to add remarks on the MARVEL System checked?",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {"comment": True},
                     "no": {}
@@ -960,54 +913,50 @@ EQUIPMENT_TYPES = {
             {
                 "id": "control_panel",
                 "question": "Does the ecology unit have a control panel?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {},
-                    "no": {"comment": True},
-                    "n/a": {"comment": True}
+                    "no": {"comment": True}
                 }
             },
             {
                 "id": "touch_screen_operational",
                 "question": "Is the Ecology unit touch screen operational and without alarms?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "esp_section",
                 "question": "Is the ESP section available?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "follow_up": [
                             {
                                 "id": "esp_working",
                                 "question": "Is the ESP Working and in good condition?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
-                                    "no": {"photo": True, "comment": True},
-                                    "n/a": {"comment": True}
+                                    "yes": {"photo": True, "comment": False},
+                                    "no": {"photo": True, "comment": True}
                                 }
                             },
                             {
                                 "id": "hvps_working",
                                 "question": "Is the HVPS working and in good condition?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
-                                    "no": {"photo": True, "comment": True},
-                                    "n/a": {"comment": True}
+                                    "yes": {"photo": True, "comment": False},
+                                    "no": {"photo": True, "comment": True}
                                 }
                             },
                             {
                                 "id": "esp_autowash",
                                 "question": "Is the ESP with autowash?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
                                     "yes": {
                                         "photo": True,
@@ -1015,16 +964,16 @@ EQUIPMENT_TYPES = {
                                             {
                                                 "id": "autowash_detergent",
                                                 "question": "Does the autowash include detergent?",
-                                                "type": "yes_no_na",
+                                                "type": "yes_no",
                                                 "conditions": {
-                                                    "yes": {},
+                                                    "yes": {"photo": True},
                                                     "no": {}
                                                 }
                                             },
                                             {
                                                 "id": "water_supply",
                                                 "question": "Is the water supply available?",
-                                                "type": "yes_no_na",
+                                                "type": "yes_no",
                                                 "conditions": {
                                                     "yes": {},
                                                     "no": {"photo": True, "comment": True}
@@ -1037,8 +986,7 @@ EQUIPMENT_TYPES = {
                             }
                         ]
                     },
-                    "no": {},
-                    "n/a": {"comment": True}
+                    "no": {}
                 }
             },
             {
@@ -1146,87 +1094,79 @@ EQUIPMENT_TYPES = {
             {
                 "id": "hood_lights",
                 "question": "Hood lights are working and in good condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "ksa_filters",
                 "question": "All KSA filters are in place and in good condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "mesh_filters",
                 "question": "All Mesh filters are in place and in good conditions?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "pre_filters",
                 "question": "PRE Filters are in place and in good condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "esp_working",
                 "question": "ESP is working and in good condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "carbon_filters",
                 "question": "Carbon filters are in place and in good condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "capture_jet_fan",
                 "question": "Capture jet fans are working and in good condition?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "touch_screen",
                 "question": "Touch screen is operational without any alarms?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {"photo": True, "comment": False},
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "other_issues",
                 "question": "Do you have any comments about the Mobichef System?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "comment": True,
@@ -1234,22 +1174,21 @@ EQUIPMENT_TYPES = {
                             {
                                 "id": "issue_photos",
                                 "question": "Do you want to include pictures for the issue witnessed?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True, "comment": False},
                                     "no": {}
                                 }
                             }
                         ]
                     },
-                    "no": {},
-                    "n/a": {"comment": True}
+                    "no": {}
                 }
             },
             {
                 "id": "final_remarks",
                 "question": "Do you want to add remarks on the Mobichef System checked?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {"comment": True},
                     "no": {}
@@ -1258,121 +1197,6 @@ EQUIPMENT_TYPES = {
         ]
     }
 }
-
-# MARVEL System checklist (used when "With Marvel" checkbox is selected)
-MARVEL_CHECKLIST = [
-    {
-        "id": "power_supply",
-        "question": "Power supply is available for marvel control panel?",
-        "type": "yes_no_na",
-        "conditions": {
-            "yes": {},
-            "no": {"photo": True, "comment": True},
-            "n/a": {"comment": True}
-        }
-    },
-    {
-        "id": "touch_screen_operational",
-        "question": "Marvel touch screen is operating and without alarms?",
-        "type": "yes_no_na",
-        "conditions": {
-            "yes": {},
-            "no": {"photo": True, "comment": True},
-            "n/a": {"comment": True}
-        }
-    },
-    {
-        "id": "internal_components",
-        "question": "All internal components inside MARVEL panel are operational?",
-        "type": "yes_no_na",
-        "conditions": {
-            "yes": {},
-            "no": {"comment": True},
-            "n/a": {"comment": True}
-        }
-    },
-    {
-        "id": "signals_vfd",
-        "question": "(0-10V) Signals are being sent from Marvel system and VFD is responding properly?",
-        "type": "yes_no_na",
-        "conditions": {
-            "yes": {},
-            "no": {"comment": True},
-            "n/a": {"comment": True}
-        }
-    },
-    {
-        "id": "ntc_sensors",
-        "question": "All NTC sensors are working and in good condition?",
-        "type": "yes_no_na",
-        "conditions": {
-            "yes": {},
-            "no": {"photo": True, "comment": True},
-            "n/a": {"comment": True}
-        }
-    },
-    {
-        "id": "ir_sensors",
-        "question": "All IR Sensors are working and in good condition?",
-        "type": "yes_no_na",
-        "conditions": {
-            "yes": {},
-            "no": {"photo": True, "comment": True},
-            "n/a": {"comment": True}
-        }
-    },
-    {
-        "id": "abd_dampers",
-        "question": "ABD Dampers are operating properly and without any alarms?",
-        "type": "yes_no_na",
-        "conditions": {
-            "yes": {},
-            "no": {"photo": True, "comment": True},
-            "n/a": {"comment": True}
-        }
-    },
-    {
-        "id": "abd_actuators",
-        "question": "All ABD Actuators are working and in good condition?",
-        "type": "yes_no_na",
-        "conditions": {
-            "yes": {},
-            "no": {"photo": True, "comment": True},
-            "n/a": {"comment": True}
-        }
-    },
-    {
-        "id": "other_issues",
-        "question": "Do you have any comments about the MARVEL System?",
-        "type": "yes_no",
-        "conditions": {
-            "yes": {
-                "comment": True,
-                "follow_up": [
-                    {
-                        "id": "issue_photos",
-                        "question": "Do you want to include pictures for the issue witnessed?",
-                        "type": "yes_no_na",
-                        "conditions": {
-                            "yes": {},
-                            "no": {}
-                        }
-                    }
-                ]
-            },
-            "no": {}
-        }
-    },
-    {
-        "id": "final_remarks",
-        "question": "Do you want to add remarks on the MARVEL System checked?",
-        "type": "yes_no",
-        "conditions": {
-            "yes": {"comment": True},
-            "no": {}
-        }
-    }
-]
 
 # Module checklist for UVF hoods
 UVF_MODULE_CHECKLIST = [
@@ -1454,9 +1278,9 @@ UVF_MODULE_CHECKLIST = [
                     {
                         "id": "alarm_fixable",
                         "question": "Can the alarm be fixed and removed from the screen on site?",
-                        "type": "yes_no_na",
+                        "type": "yes_no",
                         "conditions": {
-                            "yes": {},
+                            "yes": {"photo": True, "comment": True},
                             "no": {"comment": True}
                         }
                     }
@@ -1510,9 +1334,9 @@ PPM_CHECKLIST = [
                     {
                         "id": "ppm_issue_photos",
                         "question": "Do you want to include pictures for the issue witnessed?",
-                        "type": "yes_no_na",
+                        "type": "yes_no",
                         "conditions": {
-                            "yes": {},
+                            "yes": {"photo": True},
                             "no": {}
                         }
                     }

@@ -14,11 +14,11 @@ import base64
 import binascii
 import urllib.parse
 from utils import (style_heading, create_info_table, set_cell_margins)
-from equipment_config import EQUIPMENT_TYPES
+from equipment_config import EQUIPMENT_TYPES, MARVEL_CHECKLIST
 
 # Page configuration
 st.set_page_config(
-    page_title="Halton KSA Service Reports",
+    page_title="Service Reports System",
     page_icon="📋",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -255,7 +255,7 @@ def find_question_text(equipment_type, item_key):
     if item_key.startswith('marvel_'):
         # Remove marvel_ prefix and search in MARVEL checklist
         marvel_key = item_key[7:]  # Remove 'marvel_' prefix
-        question = search_checklist(EQUIPMENT_TYPES.get('MARVEL', {}).get('checklist', []), marvel_key)
+        question = search_checklist(MARVEL_CHECKLIST, marvel_key)
         if question:
             return question
     
@@ -292,11 +292,13 @@ def get_kitchen_summary():
                     'location': equipment.get('location', ''),
                     'yes_responses': [],
                     'no_responses': [],
+                    'na_responses': [],
                     'photos_count': len(equipment.get('photos', {})),
                     'inspection_data': equipment.get('inspection_data', {}),
                     'photos': equipment.get('photos', {}),
                     'yes_photos': {},
-                    'no_photos': {}
+                    'no_photos': {},
+                    'na_photos': {}
                 }
                 
                 # Define items to exclude from No responses (these are not issues)
@@ -374,6 +376,18 @@ def get_kitchen_summary():
                                 for pk, pv in equipment.get('photos', {}).items():
                                     if pk.startswith(photo_key):
                                         equip_summary['no_photos'][pk] = pv
+                        elif answer == 'N/A':
+                            equip_summary['na_responses'].append({
+                                'item': key,
+                                'question': question_text,
+                                'answer': answer,
+                                'comment': data.get('comment', '')
+                            })
+                            # Collect photos for this N/A response (though N/A usually doesn't have photos)
+                            photo_key = f"photo_{key}"
+                            for pk, pv in equipment.get('photos', {}).items():
+                                if pk.startswith(photo_key):
+                                    equip_summary['na_photos'][pk] = pv
                     
                 # For backward compatibility, keep issues_found as no_responses
                 equip_summary['issues_found'] = equip_summary['no_responses']
@@ -579,26 +593,30 @@ def generate_shareable_link():
 
 def create_technical_report(data):
     """Generate a Professional Technical Report Word document"""
-    # Load the template document - try multiple possible paths
-    possible_paths = [
-        os.path.join(os.path.dirname(__file__), 'Templates', 'Report Letter Head.docx'),
-        os.path.join(os.getcwd(), 'Templates', 'Report Letter Head.docx'),
-        os.path.join('Templates', 'Report Letter Head.docx'),
-        'Templates/Report Letter Head.docx'
-    ]
+    # Use template if available, otherwise create new document
+    template_path = "Templates/Report Letter Head.docx"
     
-    template_path = None
-    for path in possible_paths:
-        if os.path.exists(path):
-            template_path = path
-            break
-    
-    # Check if template exists, otherwise create new document
-    if template_path:
-        doc = Document(template_path)
-    else:
-        # Fallback to creating new document if template not found
+    try:
+        if os.path.exists(template_path):
+            doc = Document(template_path)
+            # Template already has margins and header/footer set up
+        else:
+            # Fallback to creating a new document
+            doc = Document()
+            
+            # Set document margins
+            sections = doc.sections
+            for section in sections:
+                section.top_margin = Inches(0.75)
+                section.bottom_margin = Inches(0.75)
+                section.left_margin = Inches(0.75)
+                section.right_margin = Inches(0.75)
+                section.header_distance = Inches(0.5)
+                section.footer_distance = Inches(0.5)
+    except Exception as e:
+        st.warning(f"Could not load template: {str(e)}. Using blank document.")
         doc = Document()
+        
         # Set document margins
         sections = doc.sections
         for section in sections:
@@ -609,7 +627,7 @@ def create_technical_report(data):
             section.header_distance = Inches(0.5)
             section.footer_distance = Inches(0.5)
     
-    # Add some space after letterhead
+    # Add some initial spacing
     doc.add_paragraph()
     doc.add_paragraph()
     
@@ -618,7 +636,7 @@ def create_technical_report(data):
     title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
     title_run = title_para.add_run('TECHNICAL REPORT')
     title_run.font.size = Pt(20)
-    title_run.font.color.rgb = RGBColor(31, 71, 136)  # Halton Blue
+    title_run.font.color.rgb = RGBColor(31, 71, 136)  # Professional Blue
     title_run.font.bold = True
     
     # Add report reference and date
@@ -670,146 +688,105 @@ def create_technical_report(data):
             
                 # Equipment info
                 equip_info_para = doc.add_paragraph()
-                equip_info_para.add_run(f"Location: {equip['location']}\n").font.size = Pt(11)
-                equip_info_para.add_run(f"Total Photos Taken: {equip['photos_count']}\n").font.size = Pt(11)
+                equip_info_para.add_run(f"Location: {equip['location']}").font.size = Pt(11)
                 
-                # YES RESPONSES SECTION
+                # COMBINED INSPECTION FINDINGS TABLE
+                all_findings = []
+                
+                # Add positive findings
                 if equip.get('yes_responses'):
-                    doc.add_paragraph()
-                    yes_heading = doc.add_paragraph()
-                    yes_run = yes_heading.add_run("Positive Findings:")
-                    yes_run.bold = True
-                    yes_run.font.color.rgb = RGBColor(0, 128, 0)  # Green color
-                    
-                    # Create table for yes responses
-                    yes_table_data = []
                     for yes_item in equip['yes_responses']:
                         question_text = yes_item.get('question', yes_item['item'].replace('_', ' ').title())
                         answer_text = "YES"
                         if yes_item['comment']:
                             answer_text += f"\n{yes_item['comment']}"
-                        yes_table_data.append((question_text, answer_text))
-                    
-                    if yes_table_data:
-                        create_info_table(doc, yes_table_data, col_widths=[4, 2.5])
-                    
-                    # Add Yes photos if available
-                    if equip.get('yes_photos'):
-                        doc.add_paragraph()
-                        yes_photos_para = doc.add_paragraph()
-                        yes_photos_para.add_run("Photos - Positive Findings:\n").bold = True
-                        
-                        # Group photos in pairs for side-by-side display
-                        photo_items = list(equip['yes_photos'].items())
-                        for i in range(0, len(photo_items), 2):
-                            # Create a table for side-by-side photos
-                            photo_table = doc.add_table(rows=1, cols=2)
-                            photo_table.autofit = False
-                            
-                            # First photo
-                            photo_key, photo_file = photo_items[i]
-                            cell1 = photo_table.cell(0, 0)
-                            cell1_para = cell1.paragraphs[0]
-                            cell1_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                            
-                            # Reset file position and add photo
-                            photo_file.seek(0)
-                            run1 = cell1_para.add_run()
-                            run1.add_picture(photo_file, width=Inches(2.0))
-                            
-                            # Add caption
-                            caption1 = cell1.add_paragraph()
-                            caption1.add_run(photo_key.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
-                            caption1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                            
-                            # Second photo (if exists)
-                            if i + 1 < len(photo_items):
-                                photo_key2, photo_file2 = photo_items[i + 1]
-                                cell2 = photo_table.cell(0, 1)
-                                cell2_para = cell2.paragraphs[0]
-                                cell2_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                                
-                                # Reset file position and add photo
-                                photo_file2.seek(0)
-                                run2 = cell2_para.add_run()
-                                run2.add_picture(photo_file2, width=Inches(2.0))
-                                
-                                # Add caption
-                                caption2 = cell2.add_paragraph()
-                                caption2.add_run(photo_key2.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
-                                caption2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                            
-                            # Add spacing after photos
-                            doc.add_paragraph()
+                        all_findings.append((question_text, answer_text))
                 
-                # NO RESPONSES SECTION (Issues)
+                # Add issues (NO responses)
                 if equip.get('no_responses'):
-                    doc.add_paragraph()
-                    no_heading = doc.add_paragraph()
-                    no_run = no_heading.add_run("Issues Identified:")
-                    no_run.bold = True
-                    no_run.font.color.rgb = RGBColor(255, 0, 0)  # Red color
-                    
-                    # Create table for no responses
-                    no_table_data = []
                     for no_item in equip['no_responses']:
                         question_text = no_item.get('question', no_item['item'].replace('_', ' ').title())
                         answer_text = "NO"
                         if no_item['comment']:
                             answer_text += f"\n{no_item['comment']}"
-                        no_table_data.append((question_text, answer_text))
-                    
-                    if no_table_data:
-                        create_info_table(doc, no_table_data, col_widths=[4, 2.5])
+                        all_findings.append((question_text, answer_text))
                 
-                    # Add No photos if available
-                    if equip.get('no_photos'):
-                        doc.add_paragraph()
-                        no_photos_para = doc.add_paragraph()
-                        no_photos_para.add_run("Photos - Issues:\n").bold = True
+                # Add N/A responses
+                if equip.get('na_responses'):
+                    for na_item in equip['na_responses']:
+                        question_text = na_item.get('question', na_item['item'].replace('_', ' ').title())
+                        answer_text = "N/A"
+                        if na_item['comment']:
+                            answer_text += f"\n{na_item['comment']}"
+                        all_findings.append((question_text, answer_text))
+                
+                # Create combined table if there are any findings
+                if all_findings:
+                    doc.add_paragraph()
+                    findings_heading = doc.add_paragraph()
+                    findings_run = findings_heading.add_run("Inspection Findings:")
+                    findings_run.bold = True
+                    findings_run.font.size = Pt(12)
+                    
+                    create_info_table(doc, all_findings, col_widths=[4, 2.5])
+                
+                # Combine all photos below the table
+                all_photos = {}
+                if equip.get('yes_photos'):
+                    all_photos.update(equip['yes_photos'])
+                if equip.get('no_photos'):
+                    all_photos.update(equip['no_photos'])
+                if equip.get('na_photos'):
+                    all_photos.update(equip['na_photos'])
+                
+                # Add all photos if available
+                if all_photos:
+                    doc.add_paragraph()
+                    photos_para = doc.add_paragraph()
+                    photos_para.add_run("Supporting Photos:\n").bold = True
+                    
+                    # Group photos in pairs for side-by-side display
+                    photo_items = list(all_photos.items())
+                    for i in range(0, len(photo_items), 2):
+                        # Create a table for side-by-side photos
+                        photo_table = doc.add_table(rows=1, cols=2)
+                        photo_table.autofit = False
                         
-                        # Group photos in pairs for side-by-side display
-                        photo_items = list(equip['no_photos'].items())
-                        for i in range(0, len(photo_items), 2):
-                            # Create a table for side-by-side photos
-                            photo_table = doc.add_table(rows=1, cols=2)
-                            photo_table.autofit = False
-                            
-                            # First photo
-                            photo_key, photo_file = photo_items[i]
-                            cell1 = photo_table.cell(0, 0)
-                            cell1_para = cell1.paragraphs[0]
-                            cell1_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        # First photo
+                        photo_key, photo_file = photo_items[i]
+                        cell1 = photo_table.cell(0, 0)
+                        cell1_para = cell1.paragraphs[0]
+                        cell1_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        
+                        # Reset file position and add photo
+                        photo_file.seek(0)
+                        run1 = cell1_para.add_run()
+                        run1.add_picture(photo_file, width=Inches(2.0))
+                        
+                        # Add caption
+                        caption1 = cell1.add_paragraph()
+                        caption1.add_run(photo_key.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
+                        caption1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        
+                        # Second photo (if exists)
+                        if i + 1 < len(photo_items):
+                            photo_key2, photo_file2 = photo_items[i + 1]
+                            cell2 = photo_table.cell(0, 1)
+                            cell2_para = cell2.paragraphs[0]
+                            cell2_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                             
                             # Reset file position and add photo
-                            photo_file.seek(0)
-                            run1 = cell1_para.add_run()
-                            run1.add_picture(photo_file, width=Inches(2.0))
+                            photo_file2.seek(0)
+                            run2 = cell2_para.add_run()
+                            run2.add_picture(photo_file2, width=Inches(2.0))
                             
                             # Add caption
-                            caption1 = cell1.add_paragraph()
-                            caption1.add_run(photo_key.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
-                            caption1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                            
-                            # Second photo (if exists)
-                            if i + 1 < len(photo_items):
-                                photo_key2, photo_file2 = photo_items[i + 1]
-                                cell2 = photo_table.cell(0, 1)
-                                cell2_para = cell2.paragraphs[0]
-                                cell2_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                                
-                                # Reset file position and add photo
-                                photo_file2.seek(0)
-                                run2 = cell2_para.add_run()
-                                run2.add_picture(photo_file2, width=Inches(2.0))
-                                
-                                # Add caption
-                                caption2 = cell2.add_paragraph()
-                                caption2.add_run(photo_key2.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
-                                caption2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                            
-                            # Add spacing after photos
-                            doc.add_paragraph()
+                            caption2 = cell2.add_paragraph()
+                            caption2.add_run(photo_key2.replace('photo_', '').replace('_', ' ').title()).font.size = Pt(9)
+                            caption2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        
+                        # Add spacing after photos
+                        doc.add_paragraph()
                 
                 # If no issues found at all
                 if not equip.get('no_responses'):
@@ -830,19 +807,22 @@ def create_technical_report(data):
         para = doc.add_paragraph()
         para.add_run("No equipment inspection data available.").font.size = Pt(11)
     
-    # WORK PERFORMED SECTION
-    work_heading = doc.add_heading('3. JOB DETAILS', level=1)
-    style_heading(work_heading, level=1)
-    
-    work_para = doc.add_paragraph()
-    work_text = work_para.add_run(data.get('work_performed', ''))
-    work_text.font.size = Pt(11)
-    work_para.paragraph_format.line_spacing = 1.5
-    work_para.paragraph_format.space_after = Pt(12)
+    # WORK PERFORMED SECTION (only if filled)
+    section_number = 3
+    if data.get('work_performed'):
+        work_heading = doc.add_heading(f'{section_number}. JOB DETAILS', level=1)
+        style_heading(work_heading, level=1)
+        
+        work_para = doc.add_paragraph()
+        work_text = work_para.add_run(data.get('work_performed', ''))
+        work_text.font.size = Pt(11)
+        work_para.paragraph_format.line_spacing = 1.5
+        work_para.paragraph_format.space_after = Pt(12)
+        section_number += 1
     
     # RECOMMENDATIONS SECTION
     if data.get('recommendations'):
-        rec_heading = doc.add_heading('4. RECOMMENDATIONS', level=1)
+        rec_heading = doc.add_heading(f'{section_number}. RECOMMENDATIONS', level=1)
         style_heading(rec_heading, level=1)
         
         rec_para = doc.add_paragraph()
@@ -926,7 +906,7 @@ def create_technical_report(data):
     note_para = doc.add_paragraph()
     note_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
     note_text = note_para.add_run(
-        "This report is confidential and proprietary to Halton Company Saudi Arabia Ltd.\n"
+        "This report is confidential and proprietary.\n"
         "For service inquiries, please contact our Service Department."
     )
     note_text.font.size = Pt(9)
@@ -971,7 +951,7 @@ def main():
             st.error("❌ Failed to decode shared link data")
     
     # Header
-    st.markdown('<h1 class="main-header">Halton KSA Service Reports</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">Service Reports System</h1>', unsafe_allow_html=True)
     
     # Sidebar for report type selection
     with st.sidebar:
@@ -994,16 +974,16 @@ def main():
     col1, col2 = st.columns(2)
     
     with col1:
-        customer_name = st.text_input("Customer's Name*", placeholder="e.g., SELA Company", key="customer_name")
-        project_name = st.text_input("Project Name*", placeholder="e.g., Stella kitchen hoods", key="project_name")
-        contact_person = st.text_input("Contact Person*", placeholder="e.g., Sultan Alofi", key="contact_person")
-        outlet_location = st.text_input("Outlet/Location*", placeholder="e.g., Via - Riyadh", key="outlet_location")
+        customer_name = st.text_input("Customer's Name*", placeholder="e.g., ABC Company", key="customer_name")
+        project_name = st.text_input("Project Name*", placeholder="e.g., Kitchen equipment service", key="project_name")
+        contact_person = st.text_input("Contact Person*", placeholder="e.g., John Smith", key="contact_person")
+        outlet_location = st.text_input("Outlet/Location*", placeholder="e.g., Downtown Location", key="outlet_location")
     
     with col2:
-        contact_number = st.text_input("Contact #*", placeholder="e.g., +966 55 558 5449", key="contact_number")
+        contact_number = st.text_input("Contact #*", placeholder="e.g., +1 555 123 4567", key="contact_number")
         visit_type = st.selectbox(
             "Visit Type*",
-            ["", "Service Call", "AMC (Contract)", "Emergency Service", "Installation", "Commissioning"],
+            ["", "Service Call", "AMC (Contract)", "Emergency Service", "Installation", "Commissioning", "Inspection (Healthy Visit)"],
             key="visit_type"
         )
         
@@ -1161,20 +1141,26 @@ def main():
                                 for key in keys_to_clear:
                                     del st.session_state[key]
                             
-                            marvel_key = f"with_marvel_{equipment_key_prefix}"
-                            # Initialize if not exists
-                            if marvel_key not in st.session_state:
-                                st.session_state[marvel_key] = equipment.get('with_marvel', False)
+                            # Only show Marvel checkbox if equipment type is not ECOLOGY
+                            if equipment['type'] != 'ECOLOGY':
+                                marvel_key = f"with_marvel_{equipment_key_prefix}"
+                                # Initialize if not exists
+                                if marvel_key not in st.session_state:
+                                    st.session_state[marvel_key] = equipment.get('with_marvel', False)
+                                    
+                                # Store previous state to detect changes
+                                previous_marvel_state = equipment.get('with_marvel', False)
                                 
-                            # Store previous state to detect changes
-                            previous_marvel_state = equipment.get('with_marvel', False)
-                            
-                            with_marvel = st.checkbox(
-                                "With Marvel System",
-                                key=marvel_key
-                            )
-                            # Update the equipment data from session state
-                            equipment['with_marvel'] = st.session_state[marvel_key]
+                                with_marvel = st.checkbox(
+                                    "With Marvel System",
+                                    key=marvel_key
+                                )
+                                # Update the equipment data from session state
+                                equipment['with_marvel'] = st.session_state[marvel_key]
+                            else:
+                                # For ECOLOGY, always set with_marvel to False
+                                equipment['with_marvel'] = False
+                                previous_marvel_state = False
                             
                             # If Marvel was unchecked, clear all Marvel-related data
                             if previous_marvel_state and not equipment['with_marvel']:
@@ -1232,13 +1218,11 @@ def main():
                             # If "With Marvel" is checked, add Marvel checklist
                             if equipment.get('with_marvel', False):
                                 st.markdown("##### Marvel System Checklist")
-                                marvel_config = EQUIPMENT_TYPES.get('MARVEL', {})
-                                if marvel_config and 'checklist' in marvel_config:
-                                    for i, item in enumerate(marvel_config['checklist']):
-                                        if i > 0:
-                                            st.markdown("<hr style='margin: 0.5rem 0;'>", unsafe_allow_html=True)
-                                        # Add prefix to distinguish Marvel questions
-                                        render_checklist_item(equipment, item, equipment_key_prefix, prefix="marvel_")
+                                for i, item in enumerate(MARVEL_CHECKLIST):
+                                    if i > 0:
+                                        st.markdown("<hr style='margin: 0.5rem 0;'>", unsafe_allow_html=True)
+                                    # Add prefix to distinguish Marvel questions
+                                    render_checklist_item(equipment, item, equipment_key_prefix, prefix="marvel_")
                         
                         # Add separator between equipment
                         if equip_idx < len(kitchen['equipment_list']) - 1:

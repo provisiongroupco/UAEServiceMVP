@@ -1,5 +1,5 @@
 """
-Utility functions for the Halton KSA Service Reports application
+Utility functions for the Service Reports application
 """
 
 from docx.shared import Pt, RGBColor, Inches, Cm
@@ -9,14 +9,14 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 import os
 
-# Halton brand colors
+# Professional brand colors
 HALTON_BLUE = RGBColor(31, 71, 136)  # #1f4788
 HALTON_LIGHT_BLUE = RGBColor(44, 90, 160)  # #2c5aa0
 HALTON_DARK_GRAY = RGBColor(64, 64, 64)  # #404040
 
 def add_header_with_logo(doc, logo_path=None):
     """
-    Add a professional header with Halton branding
+    Add a professional header with company branding
     
     Args:
         doc: Document object
@@ -36,7 +36,7 @@ def add_header_with_logo(doc, logo_path=None):
         left_cell.paragraphs[0].add_run().add_picture(logo_path, width=Inches(1.5))
     else:
         # Placeholder text
-        logo_text = left_cell.paragraphs[0].add_run("HALTON")
+        logo_text = left_cell.paragraphs[0].add_run("COMPANY")
         logo_text.font.size = Pt(20)
         logo_text.font.bold = True
         logo_text.font.color.rgb = HALTON_BLUE
@@ -46,7 +46,7 @@ def add_header_with_logo(doc, logo_path=None):
     middle_cell.width = Inches(3.5)
     company_para = middle_cell.paragraphs[0]
     company_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    company_text = company_para.add_run("FOODSERVICE\nKingdom of Saudi Arabia")
+    company_text = company_para.add_run("SERVICE DIVISION\nTechnical Services")
     company_text.font.size = Pt(12)
     company_text.font.color.rgb = HALTON_DARK_GRAY
     
@@ -76,7 +76,7 @@ def add_horizontal_line(parent):
     p._p.get_or_add_pPr().append(pBorder)
 
 def format_table_style(table):
-    """Apply Halton branding to tables"""
+    """Apply professional branding to tables"""
     # Set table borders
     tbl = table._tbl
     tblBorders = OxmlElement('w:tblBorders')
@@ -104,7 +104,7 @@ def add_footer(doc):
     footer = doc.sections[0].footer
     footer_para = footer.paragraphs[0]
     footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    footer_text = footer_para.add_run("Halton Foodservice KSA - Technical Service Report - Confidential")
+    footer_text = footer_para.add_run("Technical Service Report - Confidential")
     footer_text.font.size = Pt(8)
     footer_text.font.color.rgb = HALTON_DARK_GRAY
     
@@ -209,7 +209,7 @@ def create_info_table(doc, data_rows, col_widths=[2.5, 4]):
     return table
 
 def format_table_style_enhanced(table):
-    """Apply enhanced Halton branding to tables"""
+    """Apply enhanced professional branding to tables"""
     tbl = table._tbl
     tblPr = tbl.tblPr
     
