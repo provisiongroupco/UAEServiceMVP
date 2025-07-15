@@ -13,7 +13,7 @@ import json
 import base64
 import binascii
 import urllib.parse
-from utils import (style_heading, create_info_table, set_cell_margins)
+from utils import (style_heading, create_info_table, set_cell_margins, format_table_style_enhanced)
 from equipment_config import EQUIPMENT_TYPES, MARVEL_CHECKLIST
 
 # Page configuration
@@ -414,6 +414,7 @@ def collect_form_data():
                 'visit_class': st.session_state.get('visit_class', ''),
                 'report_date': st.session_state.get('report_date', datetime.now()).isoformat() if st.session_state.get('report_date') else None,
                 'work_performed': st.session_state.get('work_performed', ''),
+                'spare_parts': st.session_state.get('spare_parts', []),
                 'recommendations': st.session_state.get('recommendations', ''),
                 'technician_name': st.session_state.get('technician_name', ''),
                 'technician_id': st.session_state.get('technician_id', ''),
@@ -539,6 +540,17 @@ def restore_form_data(form_data):
                 restored_count += 1
         
         st.sidebar.write(f"📝 Restored {restored_count} basic info fields")
+        
+        # Restore spare parts with proper counter initialization
+        if 'spare_parts' in basic_info and basic_info['spare_parts']:
+            st.session_state['spare_parts'] = basic_info['spare_parts']
+            # Initialize counter and ensure all parts have unique IDs
+            import time
+            for i, part in enumerate(st.session_state['spare_parts']):
+                if 'id' not in part or not part['id']:
+                    # Add unique ID if missing
+                    part['id'] = f"restored_{i}_{int(time.time() * 1000)}"
+            st.session_state['spare_parts_counter'] = len(st.session_state['spare_parts'])
         
         # Restore kitchen data
         kitchen_data = form_data.get('kitchen_data', {})
@@ -820,6 +832,77 @@ def create_technical_report(data):
         work_para.paragraph_format.space_after = Pt(12)
         section_number += 1
     
+    # SPARE PARTS SECTION
+    spare_parts = data.get('spare_parts', [])
+    if spare_parts and any(part.get('name') for part in spare_parts):
+        parts_heading = doc.add_heading(f'{section_number}. SPARE PARTS REQUIRED', level=1)
+        style_heading(parts_heading, level=1)
+        
+        # Create table for spare parts
+        parts_table = doc.add_table(rows=1, cols=3)
+        parts_table.allow_autofit = False
+        
+        # Set column widths
+        for cell in parts_table.columns[0].cells:
+            cell.width = Inches(0.8)
+        for cell in parts_table.columns[1].cells:
+            cell.width = Inches(4.5)
+        for cell in parts_table.columns[2].cells:
+            cell.width = Inches(1.2)
+        
+        # Header row
+        header_cells = parts_table.rows[0].cells
+        header_cells[0].text = 'S.No.'
+        header_cells[1].text = 'Spare Part Name'
+        header_cells[2].text = 'Quantity'
+        
+        # Style header
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        
+        for cell in header_cells:
+            cell.paragraphs[0].runs[0].font.bold = True
+            cell.paragraphs[0].runs[0].font.color.rgb = RGBColor(255, 255, 255)
+            cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            # Set background color
+            shading_elm = OxmlElement('w:shd')
+            shading_elm.set(qn('w:fill'), '1f4788')
+            cell._element.get_or_add_tcPr().append(shading_elm)
+        
+        # Add spare parts rows
+        serial_no = 1
+        for part in spare_parts:
+            if part.get('name'):  # Only add if part name is not empty
+                row = parts_table.add_row()
+                row.cells[0].text = str(serial_no)
+                row.cells[1].text = part.get('name', '')
+                row.cells[2].text = str(part.get('quantity', 1))
+                
+                # Center align serial number and quantity
+                row.cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                row.cells[2].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                
+                serial_no += 1
+        
+        # Apply professional table formatting
+        format_table_style_enhanced(parts_table)
+        
+        # Add spacing after table
+        doc.add_paragraph()
+        section_number += 1
+    else:
+        # Add note if no spare parts required
+        no_parts_heading = doc.add_heading(f'{section_number}. SPARE PARTS REQUIRED', level=1)
+        style_heading(no_parts_heading, level=1)
+        
+        no_parts_para = doc.add_paragraph()
+        no_parts_text = no_parts_para.add_run('No spare parts required.')
+        no_parts_text.font.size = Pt(11)
+        no_parts_text.font.italic = True
+        no_parts_para.paragraph_format.space_after = Pt(12)
+        section_number += 1
+    
     # RECOMMENDATIONS SECTION
     if data.get('recommendations'):
         rec_heading = doc.add_heading(f'{section_number}. RECOMMENDATIONS', level=1)
@@ -830,6 +913,7 @@ def create_technical_report(data):
         rec_text.font.size = Pt(11)
         rec_para.paragraph_format.line_spacing = 1.5
         rec_para.paragraph_format.space_after = Pt(12)
+        section_number += 1
     
     # Add page break before signatures
     doc.add_page_break()
@@ -1005,7 +1089,6 @@ def main():
     num_kitchens = st.number_input(
         "Number of Kitchens",
         min_value=1,
-        max_value=10,
         key="num_kitchens"
     )
     
@@ -1228,6 +1311,93 @@ def main():
                         if equip_idx < len(kitchen['equipment_list']) - 1:
                             st.markdown("---")
     
+    # Spare Parts Section (outside form to allow button interactions)
+    st.markdown("### Spare Parts Required")
+    
+    # Initialize spare parts list in session state if not exists
+    if 'spare_parts' not in st.session_state:
+        st.session_state.spare_parts = []
+    
+    # Initialize a counter for spare parts to ensure unique keys
+    if 'spare_parts_counter' not in st.session_state:
+        st.session_state.spare_parts_counter = 0
+    
+    # Function to add a spare part row
+    def add_spare_part():
+        # Use timestamp to ensure truly unique IDs
+        import time
+        unique_id = f"{st.session_state.spare_parts_counter}_{int(time.time() * 1000)}"
+        st.session_state.spare_parts.append({
+            'id': unique_id,
+            'name': '', 
+            'quantity': 1
+        })
+        st.session_state.spare_parts_counter += 1
+    
+    # Function to remove a spare part row
+    def remove_spare_part(index):
+        st.session_state.spare_parts.pop(index)
+    
+    # Add new spare part button
+    col_add1, col_add2 = st.columns([1, 3])
+    with col_add1:
+        if st.button("➕ Add Spare Part", type="secondary", key="add_spare_part_btn"):
+            add_spare_part()
+            st.rerun()
+    
+    # Helper functions for updating spare parts
+    def update_part_name(index, part_id):
+        if f"spare_part_name_{part_id}" in st.session_state:
+            st.session_state.spare_parts[index]['name'] = st.session_state[f"spare_part_name_{part_id}"]
+    
+    def update_part_quantity(index, part_id):
+        if f"spare_part_qty_{part_id}" in st.session_state:
+            st.session_state.spare_parts[index]['quantity'] = st.session_state[f"spare_part_qty_{part_id}"]
+    
+    # Display existing spare parts
+    parts_to_remove = []
+    for i, part in enumerate(st.session_state.spare_parts):
+        col1, col2, col3 = st.columns([3, 1, 0.5])
+        with col1:
+            # Use the part's ID for the key to ensure uniqueness
+            # If part doesn't have an ID, create one
+            if 'id' not in part:
+                import time
+                part['id'] = f"{st.session_state.spare_parts_counter}_{int(time.time() * 1000)}_{i}"
+                st.session_state.spare_parts_counter += 1
+            part_id = part['id']
+            st.text_input(
+                f"Spare Part {i+1} Name",
+                value=part.get('name', ''),
+                key=f"spare_part_name_{part_id}",
+                placeholder="e.g., KSA Filter, UV Lamp, Solenoid Valve",
+                on_change=update_part_name,
+                args=(i, part_id)
+            )
+        with col2:
+            st.number_input(
+                f"Quantity",
+                value=part.get('quantity', 1),
+                min_value=1,
+                key=f"spare_part_qty_{part_id}",
+                on_change=update_part_quantity,
+                args=(i, part_id)
+            )
+        with col3:
+            st.markdown("<br>", unsafe_allow_html=True)  # Add spacing
+            if st.button("🗑️", key=f"remove_part_{part_id}", help="Remove this spare part"):
+                parts_to_remove.append(i)
+    
+    # Remove parts marked for deletion
+    if parts_to_remove:
+        for index in reversed(parts_to_remove):
+            remove_spare_part(index)
+        st.rerun()
+    
+    # If no spare parts added, show a note
+    if len(st.session_state.spare_parts) == 0:
+        st.info("No spare parts required. Click 'Add Spare Part' if parts are needed.")
+    
     # Continue with the rest of the form
     with st.form("technical_report_form"):
         # Work Performed Section
@@ -1237,7 +1407,6 @@ def main():
             placeholder="Detail all maintenance, repairs, or services completed...",
             height=120
         )
-        
         
         # Recommendations Section
         st.markdown("### Recommendations")
@@ -1361,6 +1530,7 @@ def main():
                 "Contact Number": contact_number,
                 "Visit Type": visit_type,
                 "Work Performed": work_performed,
+                "Spare Parts": st.session_state.get('spare_parts', []),
                 "Technician Name": technician_name,
                 "Technician ID": technician_id
             }
@@ -1457,6 +1627,7 @@ def main():
                     'equipment_inspection': get_kitchen_summary(),
                     'kitchen_list': st.session_state.kitchen_list,
                     'work_performed': work_performed,
+                    'spare_parts': st.session_state.get('spare_parts', []),
                     'recommendations': recommendations,
                     'technician_name': technician_name,
                     'technician_id': technician_id,

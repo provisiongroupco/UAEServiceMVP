@@ -12,7 +12,7 @@ EQUIPMENT_TYPES = {
                 "question": "Are the hood lights operational?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -29,7 +29,7 @@ EQUIPMENT_TYPES = {
                                 "question": "Is there an issue with the hood light ballast?",
                                 "type": "yes_no_na",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True, "comment": True},
                                     "no": {"photo": True, "comment": False},
                                     "n/a": {"comment": True}
                                 }
@@ -45,7 +45,7 @@ EQUIPMENT_TYPES = {
                 "question": "Is the capture jet fan working and in good condition?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -131,7 +131,7 @@ EQUIPMENT_TYPES = {
                 "question": "Are the KSA filters in good condition?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -141,7 +141,7 @@ EQUIPMENT_TYPES = {
                 "question": "Are the KSA filters all in place?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -151,7 +151,7 @@ EQUIPMENT_TYPES = {
                 "question": "Are the Personal supply air nozzles in place and in good condition?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -198,7 +198,7 @@ EQUIPMENT_TYPES = {
                 "question": "Are the hood lights operational?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -215,7 +215,7 @@ EQUIPMENT_TYPES = {
                                 "question": "Is there an issue with the hood light ballast?",
                                 "type": "yes_no_na",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True, "comment": True},
                                     "no": {"photo": True, "comment": False},
                                     "n/a": {"comment": True}
                                 }
@@ -231,7 +231,7 @@ EQUIPMENT_TYPES = {
                 "question": "Is the capture jet fan working and in good condition?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -265,7 +265,7 @@ EQUIPMENT_TYPES = {
                 "question": "Are the KSA filters in good condition?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -275,7 +275,7 @@ EQUIPMENT_TYPES = {
                 "question": "Are the KSA filters all in place?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -285,7 +285,7 @@ EQUIPMENT_TYPES = {
                 "question": "Are the Blank nozzles in place and in good condition?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -364,7 +364,7 @@ EQUIPMENT_TYPES = {
                 "question": "Are the UV power cables in good condition?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -374,7 +374,7 @@ EQUIPMENT_TYPES = {
                 "question": "Are the KSA filters all in place?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -384,7 +384,7 @@ EQUIPMENT_TYPES = {
                 "question": "Are the filter magnets all in place?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -394,7 +394,7 @@ EQUIPMENT_TYPES = {
                 "question": "Are the hood lights operational?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -411,7 +411,7 @@ EQUIPMENT_TYPES = {
                                 "question": "Is there an issue with the hood light ballast?",
                                 "type": "yes_no_na",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True, "comment": True},
                                     "no": {"photo": True, "comment": False},
                                     "n/a": {"comment": True}
                                 }
@@ -427,7 +427,7 @@ EQUIPMENT_TYPES = {
                 "question": "Is the capture jet fan working and in good condition?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -550,7 +550,7 @@ EQUIPMENT_TYPES = {
                 "question": "Are the hood lights operational?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -567,7 +567,7 @@ EQUIPMENT_TYPES = {
                                 "question": "Is there an issue with the hood light ballast?",
                                 "type": "yes_no_na",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True, "comment": True},
                                     "no": {"photo": True, "comment": False},
                                     "n/a": {"comment": True}
                                 }
@@ -583,7 +583,7 @@ EQUIPMENT_TYPES = {
                 "question": "Is the capture jet fan working and in good condition?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -680,7 +680,7 @@ EQUIPMENT_TYPES = {
                 "question": "Are the KSA filters in good condition?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -690,7 +690,7 @@ EQUIPMENT_TYPES = {
                 "question": "Are the KSA filters all in place?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -700,7 +700,7 @@ EQUIPMENT_TYPES = {
                 "question": "Are the Personal supply air nozzles in place and in good condition?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -710,7 +710,7 @@ EQUIPMENT_TYPES = {
                 "question": "Are the cold mist nozzles fully operational and spraying?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -720,7 +720,7 @@ EQUIPMENT_TYPES = {
                 "question": "Are the solenoid valve for cold mist operational?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -730,7 +730,7 @@ EQUIPMENT_TYPES = {
                 "question": "Is the pressure switch operational?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -740,7 +740,7 @@ EQUIPMENT_TYPES = {
                 "question": "Is the cold mist solenoid coil operational?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -750,7 +750,7 @@ EQUIPMENT_TYPES = {
                 "question": "Is the pressure adjusted as per Halton recommended pressure?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -760,7 +760,7 @@ EQUIPMENT_TYPES = {
                 "question": "Is the hand valve fully opened?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -770,7 +770,7 @@ EQUIPMENT_TYPES = {
                 "question": "Is there cold water available?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -780,7 +780,7 @@ EQUIPMENT_TYPES = {
                 "question": "Is the water line connected properly?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -809,7 +809,7 @@ EQUIPMENT_TYPES = {
                                 "question": "Is there power supply available for the panel?",
                                 "type": "yes_no_na",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True},
                                     "no": {"photo": True, "comment": True},
                                     "n/a": {"comment": True}
                                 }
@@ -819,7 +819,7 @@ EQUIPMENT_TYPES = {
                                 "question": "Is there hot water supply available for the hoods?",
                                 "type": "yes_no_na",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True},
                                     "no": {"photo": True, "comment": True},
                                     "n/a": {"comment": True}
                                 }
@@ -829,7 +829,7 @@ EQUIPMENT_TYPES = {
                                 "question": "Is the solenoid valve for the hot water working and in good condition?",
                                 "type": "yes_no_na",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True},
                                     "no": {"photo": True, "comment": True},
                                     "n/a": {"comment": True}
                                 }
@@ -845,7 +845,7 @@ EQUIPMENT_TYPES = {
                                 "question": "Are the cold mist nozzles all operational and in good condition?",
                                 "type": "yes_no_na",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True},
                                     "no": {"photo": True, "comment": True},
                                     "n/a": {"comment": True}
                                 }
@@ -856,13 +856,14 @@ EQUIPMENT_TYPES = {
                                 "type": "yes_no_na",
                                 "conditions": {
                                     "yes": {
+                                        "photo": True,
                                         "follow_up": [
                                             {
                                                 "id": "pressure_switch_75pa",
                                                 "question": "Is the pressure switch working on 75PA?",
                                                 "type": "yes_no_na",
                                                 "conditions": {
-                                                    "yes": {},
+                                                    "yes": {"photo": True},
                                                     "no": {"comment": True}
                                                 }
                                             }
@@ -876,7 +877,7 @@ EQUIPMENT_TYPES = {
                                 "question": "Is the water supply available for hot water wash?",
                                 "type": "yes_no_na",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True},
                                     "no": {"photo": True, "comment": True},
                                     "n/a": {"comment": True}
                                 }
@@ -886,7 +887,7 @@ EQUIPMENT_TYPES = {
                                 "question": "Are the hot water nozzles all working and in good condition?",
                                 "type": "yes_no_na",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True},
                                     "no": {"photo": True, "comment": True},
                                     "n/a": {"comment": True}
                                 }
@@ -897,6 +898,7 @@ EQUIPMENT_TYPES = {
                                 "type": "yes_no_na",
                                 "conditions": {
                                     "yes": {
+                                        "photo": True,
                                         "follow_up": [
                                             {
                                                 "id": "detergent_chemical_full",
@@ -933,7 +935,7 @@ EQUIPMENT_TYPES = {
                                 "question": "Do you want to include pictures for the issue witnessed?",
                                 "type": "yes_no_na",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True},
                                     "no": {}
                                 }
                             }
@@ -962,7 +964,7 @@ EQUIPMENT_TYPES = {
                 "question": "Does the ecology unit have a control panel?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"comment": True},
                     "n/a": {"comment": True}
                 }
@@ -972,7 +974,7 @@ EQUIPMENT_TYPES = {
                 "question": "Is the Ecology unit touch screen operational and without alarms?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -989,7 +991,7 @@ EQUIPMENT_TYPES = {
                                 "question": "Is the ESP Working and in good condition?",
                                 "type": "yes_no_na",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True},
                                     "no": {"photo": True, "comment": True},
                                     "n/a": {"comment": True}
                                 }
@@ -999,7 +1001,7 @@ EQUIPMENT_TYPES = {
                                 "question": "Is the HVPS working and in good condition?",
                                 "type": "yes_no_na",
                                 "conditions": {
-                                    "yes": {},
+                                    "yes": {"photo": True},
                                     "no": {"photo": True, "comment": True},
                                     "n/a": {"comment": True}
                                 }
@@ -1017,7 +1019,7 @@ EQUIPMENT_TYPES = {
                                                 "question": "Does the autowash include detergent?",
                                                 "type": "yes_no_na",
                                                 "conditions": {
-                                                    "yes": {},
+                                                    "yes": {"photo": True},
                                                     "no": {}
                                                 }
                                             },
@@ -1026,7 +1028,7 @@ EQUIPMENT_TYPES = {
                                                 "question": "Is the water supply available?",
                                                 "type": "yes_no_na",
                                                 "conditions": {
-                                                    "yes": {},
+                                                    "yes": {"photo": True},
                                                     "no": {"photo": True, "comment": True}
                                                 }
                                             }
@@ -1148,7 +1150,7 @@ EQUIPMENT_TYPES = {
                 "question": "Hood lights are working and in good condition?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -1158,7 +1160,7 @@ EQUIPMENT_TYPES = {
                 "question": "All KSA filters are in place and in good condition?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -1168,7 +1170,7 @@ EQUIPMENT_TYPES = {
                 "question": "All Mesh filters are in place and in good conditions?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -1178,7 +1180,7 @@ EQUIPMENT_TYPES = {
                 "question": "PRE Filters are in place and in good condition?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -1188,7 +1190,7 @@ EQUIPMENT_TYPES = {
                 "question": "ESP is working and in good condition?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -1198,7 +1200,7 @@ EQUIPMENT_TYPES = {
                 "question": "Carbon filters are in place and in good condition?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -1208,7 +1210,7 @@ EQUIPMENT_TYPES = {
                 "question": "Capture jet fans are working and in good condition?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -1218,7 +1220,7 @@ EQUIPMENT_TYPES = {
                 "question": "Touch screen is operational without any alarms?",
                 "type": "yes_no_na",
                 "conditions": {
-                    "yes": {},
+                    "yes": {"photo": True},
                     "no": {"photo": True, "comment": True},
                     "n/a": {"comment": True}
                 }
@@ -1266,7 +1268,7 @@ MARVEL_CHECKLIST = [
         "question": "Power supply is available for marvel control panel?",
         "type": "yes_no_na",
         "conditions": {
-            "yes": {},
+            "yes": {"photo": True},
             "no": {"photo": True, "comment": True},
             "n/a": {"comment": True}
         }
@@ -1276,7 +1278,7 @@ MARVEL_CHECKLIST = [
         "question": "Marvel touch screen is operating and without alarms?",
         "type": "yes_no_na",
         "conditions": {
-            "yes": {},
+            "yes": {"photo": True},
             "no": {"photo": True, "comment": True},
             "n/a": {"comment": True}
         }
@@ -1286,7 +1288,7 @@ MARVEL_CHECKLIST = [
         "question": "All internal components inside MARVEL panel are operational?",
         "type": "yes_no_na",
         "conditions": {
-            "yes": {},
+            "yes": {"photo": True},
             "no": {"comment": True},
             "n/a": {"comment": True}
         }
@@ -1296,7 +1298,7 @@ MARVEL_CHECKLIST = [
         "question": "(0-10V) Signals are being sent from Marvel system and VFD is responding properly?",
         "type": "yes_no_na",
         "conditions": {
-            "yes": {},
+            "yes": {"photo": True},
             "no": {"comment": True},
             "n/a": {"comment": True}
         }
@@ -1306,7 +1308,7 @@ MARVEL_CHECKLIST = [
         "question": "All NTC sensors are working and in good condition?",
         "type": "yes_no_na",
         "conditions": {
-            "yes": {},
+            "yes": {"photo": True},
             "no": {"photo": True, "comment": True},
             "n/a": {"comment": True}
         }
@@ -1316,7 +1318,7 @@ MARVEL_CHECKLIST = [
         "question": "All IR Sensors are working and in good condition?",
         "type": "yes_no_na",
         "conditions": {
-            "yes": {},
+            "yes": {"photo": True},
             "no": {"photo": True, "comment": True},
             "n/a": {"comment": True}
         }
@@ -1326,7 +1328,7 @@ MARVEL_CHECKLIST = [
         "question": "ABD Dampers are operating properly and without any alarms?",
         "type": "yes_no_na",
         "conditions": {
-            "yes": {},
+            "yes": {"photo": True},
             "no": {"photo": True, "comment": True},
             "n/a": {"comment": True}
         }
@@ -1336,7 +1338,7 @@ MARVEL_CHECKLIST = [
         "question": "All ABD Actuators are working and in good condition?",
         "type": "yes_no_na",
         "conditions": {
-            "yes": {},
+            "yes": {"photo": True},
             "no": {"photo": True, "comment": True},
             "n/a": {"comment": True}
         }
@@ -1354,7 +1356,7 @@ MARVEL_CHECKLIST = [
                         "question": "Do you want to include pictures for the issue witnessed?",
                         "type": "yes_no_na",
                         "conditions": {
-                            "yes": {},
+                            "yes": {"photo": True},
                             "no": {}
                         }
                     }
@@ -1456,7 +1458,7 @@ UVF_MODULE_CHECKLIST = [
                         "question": "Can the alarm be fixed and removed from the screen on site?",
                         "type": "yes_no_na",
                         "conditions": {
-                            "yes": {},
+                            "yes": {"photo": True},
                             "no": {"comment": True}
                         }
                     }
@@ -1505,6 +1507,7 @@ PPM_CHECKLIST = [
         "type": "yes_no",
         "conditions": {
             "yes": {
+                "photo": True,
                 "comment": True,
                 "follow_up": [
                     {
@@ -1512,7 +1515,7 @@ PPM_CHECKLIST = [
                         "question": "Do you want to include pictures for the issue witnessed?",
                         "type": "yes_no_na",
                         "conditions": {
-                            "yes": {},
+                            "yes": {"photo": True},
                             "no": {}
                         }
                     }
