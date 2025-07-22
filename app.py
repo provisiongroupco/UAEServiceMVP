@@ -171,6 +171,62 @@ def render_checklist_item(equipment, item, equip_key_prefix, prefix=""):
         )
         # Update equipment object directly
         equipment['inspection_data'][item_key]['answer'] = st.session_state[widget_key]
+        
+        # Handle alarm generation if this is an alarm count question
+        if item.get('generates_alarms') and answer > 0:
+            st.markdown("##### Alarm Details")
+            
+            # Initialize alarm data structure if not exists
+            if 'alarm_details' not in equipment:
+                equipment['alarm_details'] = {}
+            
+            # Generate alarm detail fields for each alarm
+            for i in range(int(answer)):
+                alarm_idx = i + 1
+                alarm_key = f"alarm_{alarm_idx}"
+                
+                # Initialize alarm data if not exists
+                if alarm_key not in equipment['alarm_details']:
+                    equipment['alarm_details'][alarm_key] = {}
+                
+                st.markdown(f"**Alarm {alarm_idx}:**")
+                
+                # Description field
+                desc_key = f"alarm_desc_{alarm_idx}_{equip_key_prefix}"
+                if desc_key not in st.session_state:
+                    st.session_state[desc_key] = equipment['alarm_details'][alarm_key].get('description', '')
+                
+                description = st.text_area(
+                    f"Description for Alarm {alarm_idx}",
+                    key=desc_key,
+                    height=80,
+                    placeholder="Describe the alarm (e.g., UV lamp failure, Communication error, etc.)"
+                )
+                equipment['alarm_details'][alarm_key]['description'] = st.session_state[desc_key]
+                
+                # Photo upload for this alarm
+                alarm_photo_key = f"photo_alarm_{alarm_idx}"
+                uploaded_files = st.file_uploader(
+                    f"📷 Upload photo(s) for Alarm {alarm_idx}",
+                    type=['png', 'jpg', 'jpeg'],
+                    key=f"photo_alarm_{alarm_idx}_{equip_key_prefix}",
+                    accept_multiple_files=True
+                )
+                
+                if uploaded_files:
+                    if 'photos' not in equipment:
+                        equipment['photos'] = {}
+                    # Store multiple photos with numbered keys
+                    for j, uploaded_file in enumerate(uploaded_files):
+                        if len(uploaded_files) == 1:
+                            equipment['photos'][alarm_photo_key] = uploaded_file
+                        else:
+                            equipment['photos'][f"{alarm_photo_key}_{j+1}"] = uploaded_file
+                    st.success(f"✅ {len(uploaded_files)} photo(s) uploaded for Alarm {alarm_idx}")
+                
+                # Add separator between alarms
+                if i < int(answer) - 1:
+                    st.markdown("---")
     else:
         answer = None
     
@@ -298,7 +354,8 @@ def get_kitchen_summary():
                     'photos': equipment.get('photos', {}),
                     'yes_photos': {},
                     'no_photos': {},
-                    'na_photos': {}
+                    'na_photos': {},
+                    'alarm_details': equipment.get('alarm_details', {})
                 }
                 
                 # Define items to exclude from No responses (these are not issues)
@@ -605,6 +662,48 @@ def generate_shareable_link():
 
 def create_technical_report(data):
     """Generate a Professional Technical Report Word document"""
+    
+    # Helper function to set cell background
+    def set_cell_background(cell, color):
+        """Set background color for a table cell"""
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        
+        tc = cell._tc
+        tcPr = tc.get_or_add_tcPr()
+        shd = OxmlElement('w:shd')
+        shd.set(qn('w:val'), 'clear')
+        shd.set(qn('w:color'), 'auto')
+        shd.set(qn('w:fill'), color)
+        tcPr.append(shd)
+    
+    # Helper function to set table borders
+    def set_table_borders(table):
+        """Apply borders to table"""
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        
+        tbl = table._tbl
+        tblPr = tbl.tblPr
+        
+        # Remove existing borders
+        for child in tblPr:
+            if child.tag.endswith('tblBorders'):
+                tblPr.remove(child)
+        
+        # Create new borders
+        tblBorders = OxmlElement('w:tblBorders')
+        
+        for border_name in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
+            border = OxmlElement(f'w:{border_name}')
+            border.set(qn('w:val'), 'single')
+            border.set(qn('w:sz'), '4')
+            border.set(qn('w:space'), '0')
+            border.set(qn('w:color'), '000000')
+            tblBorders.append(border)
+        
+        tblPr.append(tblBorders)
+    
     # Use template if available, otherwise create new document
     template_path = "Templates/Report Letter Head.docx"
     
@@ -701,6 +800,79 @@ def create_technical_report(data):
                 # Equipment info
                 equip_info_para = doc.add_paragraph()
                 equip_info_para.add_run(f"Location: {equip['location']}").font.size = Pt(11)
+                
+                # Add alarm details if any alarms are registered
+                if equip.get('alarm_details'):
+                    doc.add_paragraph()
+                    alarm_heading = doc.add_paragraph()
+                    alarm_run = alarm_heading.add_run("Registered Alarms:")
+                    alarm_run.bold = True
+                    alarm_run.font.size = Pt(12)
+                    alarm_run.font.color.rgb = RGBColor(255, 0, 0)  # Red color for alarms
+                    
+                    for alarm_key, alarm_data in equip['alarm_details'].items():
+                        if alarm_data.get('description'):
+                            alarm_num = alarm_key.replace('alarm_', '')
+                            alarm_para = doc.add_paragraph()
+                            alarm_para.add_run(f"Alarm {alarm_num}: ").bold = True
+                            alarm_para.add_run(alarm_data['description']).font.size = Pt(11)
+                            alarm_para.paragraph_format.left_indent = Inches(0.5)
+                    
+                    # Add alarm photos
+                    alarm_photos = {}
+                    for photo_key, photo_file in equip.get('photos', {}).items():
+                        if 'photo_alarm_' in photo_key:
+                            alarm_photos[photo_key] = photo_file
+                    
+                    if alarm_photos:
+                        doc.add_paragraph()
+                        alarm_photos_para = doc.add_paragraph()
+                        alarm_photos_para.add_run("Alarm Photos:\n").bold = True
+                        
+                        # Group photos in pairs for side-by-side display
+                        photo_items = list(alarm_photos.items())
+                        for i in range(0, len(photo_items), 2):
+                            # Create a table for side-by-side photos
+                            photo_table = doc.add_table(rows=1, cols=2)
+                            photo_table.autofit = False
+                            
+                            # First photo
+                            photo_key, photo_file = photo_items[i]
+                            cell1 = photo_table.cell(0, 0)
+                            cell1_para = cell1.paragraphs[0]
+                            cell1_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            
+                            # Reset file position and add photo
+                            photo_file.seek(0)
+                            run1 = cell1_para.add_run()
+                            run1.add_picture(photo_file, width=Inches(2.0))
+                            
+                            # Add caption
+                            caption1 = cell1.add_paragraph()
+                            caption_text = photo_key.replace('photo_', '').replace('_', ' ').title()
+                            caption1.add_run(caption_text).font.size = Pt(9)
+                            caption1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            
+                            # Second photo (if exists)
+                            if i + 1 < len(photo_items):
+                                photo_key2, photo_file2 = photo_items[i + 1]
+                                cell2 = photo_table.cell(0, 1)
+                                cell2_para = cell2.paragraphs[0]
+                                cell2_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                
+                                # Reset file position and add photo
+                                photo_file2.seek(0)
+                                run2 = cell2_para.add_run()
+                                run2.add_picture(photo_file2, width=Inches(2.0))
+                                
+                                # Add caption
+                                caption2 = cell2.add_paragraph()
+                                caption_text2 = photo_key2.replace('photo_', '').replace('_', ' ').title()
+                                caption2.add_run(caption_text2).font.size = Pt(9)
+                                caption2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            
+                            # Add spacing after photos
+                            doc.add_paragraph()
                 
                 # COMBINED INSPECTION FINDINGS TABLE
                 all_findings = []
@@ -979,6 +1151,7 @@ def create_technical_report(data):
             cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
             for run in cell.paragraphs[0].runs:
                 run.font.size = Pt(11)
+                run.font.name = 'Arial'
             set_cell_margins(cell, top=0.1, bottom=0.1)
     
     # Make labels bold
@@ -994,6 +1167,420 @@ def create_technical_report(data):
         "For service inquiries, please contact our Service Department."
     )
     note_text.font.size = Pt(9)
+    note_text.font.name = 'Arial'
+    note_text.font.color.rgb = RGBColor(128, 128, 128)
+    
+    # Save to bytes
+    doc_bytes = io.BytesIO()
+    doc.save(doc_bytes)
+    doc_bytes.seek(0)
+    
+    return doc_bytes
+
+
+def create_general_service_report(data):
+    """Generate a Professional General Service Report Word document"""
+    
+    # Helper function to set cell background
+    def set_cell_background(cell, color):
+        """Set background color for a table cell"""
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        
+        tc = cell._tc
+        tcPr = tc.get_or_add_tcPr()
+        shd = OxmlElement('w:shd')
+        shd.set(qn('w:val'), 'clear')
+        shd.set(qn('w:color'), 'auto')
+        shd.set(qn('w:fill'), color)
+        tcPr.append(shd)
+    
+    # Helper function to set table borders
+    def set_table_borders(table):
+        """Apply borders to table"""
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        
+        tbl = table._tbl
+        tblPr = tbl.tblPr
+        
+        # Remove existing borders
+        for child in tblPr:
+            if child.tag.endswith('tblBorders'):
+                tblPr.remove(child)
+        
+        # Create new borders
+        tblBorders = OxmlElement('w:tblBorders')
+        
+        for border_name in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
+            border = OxmlElement(f'w:{border_name}')
+            border.set(qn('w:val'), 'single')
+            border.set(qn('w:sz'), '4')
+            border.set(qn('w:space'), '0')
+            border.set(qn('w:color'), '000000')
+            tblBorders.append(border)
+        
+        tblPr.append(tblBorders)
+    
+    # Use template if available, otherwise create new document
+    template_path = "Templates/Report Letter Head.docx"
+    
+    try:
+        doc = Document(template_path)
+    except:
+        doc = Document()
+    
+    # Get the default style and set font
+    try:
+        normal_style = doc.styles['Normal']
+        normal_style.font.name = 'Arial'
+        normal_style.font.size = Pt(11)
+    except:
+        pass
+    
+    # Set default font for headings
+    try:
+        for i in range(1, 4):
+            heading_style = doc.styles[f'Heading {i}']
+            heading_style.font.name = 'Arial'
+    except:
+        pass
+    
+    # Title
+    title = doc.add_heading('GENERAL SERVICE REPORT', level=0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    style_heading(title, level=0)
+    
+    # Add minimal spacing
+    doc.add_paragraph()
+    
+    # GENERAL INFORMATION SECTION
+    general_heading = doc.add_heading('1. GENERAL INFORMATION', level=1)
+    style_heading(general_heading, level=1)
+    
+    # Create professional info table (same style as Technical Report)
+    general_info = [
+        ("Customer Name", data.get('customer_name', '')),
+        ("Project Name", data.get('project_name', '')),
+        ("Contact Person", data.get('contact_person', '')),
+        ("Location", data.get('outlet_location', '')),
+        ("Contact Number", data.get('contact_number', '')),
+        ("Visit Type", data.get('visit_type', '')),
+        ("Visit Classification", data.get('visit_class', ''))
+    ]
+    
+    create_info_table(doc, general_info)
+    doc.add_paragraph()  # Add spacing
+    
+    # WORK PERFORMED SECTION
+    section_number = 2
+    work_heading = doc.add_heading(f'{section_number}. WORK PERFORMED', level=1)
+    style_heading(work_heading, level=1)
+    
+    work_performed_list = data.get('work_performed_list', [])
+    
+    if work_performed_list:
+        # Create a table for work performed items
+        work_table = doc.add_table(rows=1, cols=2)
+        work_table.allow_autofit = False
+        work_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        
+        # Set column widths
+        work_table.columns[0].width = Inches(0.8)
+        work_table.columns[1].width = Inches(5.7)
+        
+        # Header row
+        header_cells = work_table.rows[0].cells
+        header_cells[0].text = 'S.No.'
+        header_cells[1].text = 'Work Performed Description'
+        
+        # Style header row to match Technical Report
+        for i, cell in enumerate(header_cells):
+            if i == 0:  # S.No. column
+                cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            else:  # Description column
+                cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+            for run in cell.paragraphs[0].runs:
+                run.font.bold = True
+                run.font.size = Pt(11)
+                run.font.name = 'Arial'
+            set_cell_background(cell, 'E8E8E8')
+        
+        # Add work items
+        for idx, work_item in enumerate(work_performed_list):
+            if work_item.get('title') or work_item.get('description'):
+                row = work_table.add_row()
+                row.cells[0].text = str(idx + 1)
+                row.cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                # Use title if available, otherwise use description
+                row.cells[1].text = work_item.get('title', work_item.get('description', ''))
+                
+                # Apply font size and name
+                for cell in row.cells:
+                    for run in cell.paragraphs[0].runs:
+                        run.font.size = Pt(11)
+                        run.font.name = 'Arial'
+        
+        # Apply borders
+        set_table_borders(work_table)
+        doc.add_paragraph()
+        
+        # Add detailed descriptions if any
+        has_descriptions = any(work_item.get('description') for work_item in work_performed_list)
+        if has_descriptions:
+            details_heading = doc.add_paragraph()
+            details_run = details_heading.add_run("Work Details:")
+            details_run.bold = True
+            details_run.font.size = Pt(12)
+            details_run.font.name = 'Arial'
+            
+            for idx, work_item in enumerate(work_performed_list):
+                if work_item.get('description'):
+                    # Work item number and title
+                    item_para = doc.add_paragraph()
+                    item_title = item_para.add_run(f"{idx + 1}. {work_item.get('title', f'Work Item {idx + 1}')}: ")
+                    item_title.bold = True
+                    item_title.font.size = Pt(11)
+                    item_title.font.name = 'Arial'
+                    
+                    # Description
+                    desc_text = item_para.add_run(work_item['description'])
+                    desc_text.font.size = Pt(11)
+                    desc_text.font.name = 'Arial'
+                    item_para.paragraph_format.left_indent = Inches(0.25)
+                    item_para.paragraph_format.space_after = Pt(6)
+            
+            doc.add_paragraph()
+        
+        # Add photos section if any work items have photos
+        has_photos = any(work_item.get('photos') for work_item in work_performed_list)
+        if has_photos:
+            photos_heading = doc.add_paragraph()
+            photos_run = photos_heading.add_run("Work Photos:")
+            photos_run.bold = True
+            photos_run.font.size = Pt(12)
+            photos_run.font.name = 'Arial'
+            
+            # Collect all photos from all work items
+            all_photos = []
+            for work_idx, work_item in enumerate(work_performed_list):
+                if work_item.get('photos'):
+                    for photo_idx, photo in enumerate(work_item['photos']):
+                        photo_desc = work_item.get('photo_descriptions', {}).get(str(photo_idx), f'Work Item {work_idx + 1} - Photo {photo_idx + 1}')
+                        all_photos.append((photo, photo_desc))
+            
+            # Display photos in pairs
+            for i in range(0, len(all_photos), 2):
+                photo_table = doc.add_table(rows=1, cols=2)
+                photo_table.autofit = False
+                
+                # First photo
+                photo_file, photo_desc = all_photos[i]
+                cell1 = photo_table.cell(0, 0)
+                cell1_para = cell1.paragraphs[0]
+                cell1_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                
+                # Reset file position and add photo
+                photo_file.seek(0)
+                run1 = cell1_para.add_run()
+                run1.add_picture(photo_file, width=Inches(2.0))
+                
+                # Add caption
+                caption1 = cell1.add_paragraph()
+                caption_run1 = caption1.add_run(photo_desc)
+                caption_run1.font.size = Pt(9)
+                caption_run1.font.name = 'Arial'
+                caption1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                
+                # Second photo (if exists)
+                if i + 1 < len(all_photos):
+                    photo_file2, photo_desc2 = all_photos[i + 1]
+                    cell2 = photo_table.cell(0, 1)
+                    cell2_para = cell2.paragraphs[0]
+                    cell2_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    
+                    # Reset file position and add photo
+                    photo_file2.seek(0)
+                    run2 = cell2_para.add_run()
+                    run2.add_picture(photo_file2, width=Inches(2.0))
+                    
+                    # Add caption
+                    caption2 = cell2.add_paragraph()
+                    caption_run2 = caption2.add_run(photo_desc2)
+                    caption_run2.font.size = Pt(9)
+                    caption_run2.font.name = 'Arial'
+                    caption2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                
+                # Add spacing after photos
+                doc.add_paragraph()
+    else:
+        no_work_para = doc.add_paragraph()
+        no_work_text = no_work_para.add_run('No work performed recorded.')
+        no_work_text.font.size = Pt(11)
+        no_work_text.font.name = 'Arial'
+        no_work_text.font.italic = True
+        no_work_para.paragraph_format.space_after = Pt(12)
+    
+    section_number += 1
+    
+    # SPARE PARTS SECTION (same as technical report)
+    spare_parts = data.get('spare_parts', [])
+    if spare_parts and any(part.get('name') for part in spare_parts):
+        parts_heading = doc.add_heading(f'{section_number}. SPARE PARTS REQUIRED', level=1)
+        style_heading(parts_heading, level=1)
+        
+        # Create table for spare parts
+        parts_table = doc.add_table(rows=1, cols=3)
+        parts_table.allow_autofit = False
+        parts_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        
+        # Set column widths
+        parts_table.columns[0].width = Inches(0.8)
+        parts_table.columns[1].width = Inches(4.5)
+        parts_table.columns[2].width = Inches(1.2)
+        
+        # Header row
+        header_cells = parts_table.rows[0].cells
+        header_cells[0].text = 'S.No.'
+        header_cells[1].text = 'Spare Part Description'
+        header_cells[2].text = 'Quantity'
+        
+        # Style header row to match Technical Report
+        for cell in header_cells:
+            cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            for run in cell.paragraphs[0].runs:
+                run.font.bold = True
+                run.font.size = Pt(11)
+                run.font.name = 'Arial'
+            set_cell_background(cell, 'E8E8E8')
+        
+        # Add spare parts
+        for idx, part in enumerate(spare_parts):
+            if part.get('name'):
+                row = parts_table.add_row()
+                row.cells[0].text = str(idx + 1)
+                row.cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                row.cells[1].text = part.get('name', '')
+                row.cells[2].text = str(part.get('quantity', 1))
+                row.cells[2].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                
+                # Apply font size and name
+                for cell in row.cells:
+                    for run in cell.paragraphs[0].runs:
+                        run.font.size = Pt(11)
+                        run.font.name = 'Arial'
+        
+        # Apply borders
+        set_table_borders(parts_table)
+        doc.add_paragraph()
+        section_number += 1
+    else:
+        parts_heading = doc.add_heading(f'{section_number}. SPARE PARTS REQUIRED', level=1)
+        style_heading(parts_heading, level=1)
+        
+        no_parts_para = doc.add_paragraph()
+        no_parts_text = no_parts_para.add_run('No spare parts required.')
+        no_parts_text.font.size = Pt(11)
+        no_parts_text.font.name = 'Arial'
+        no_parts_text.font.italic = True
+        no_parts_para.paragraph_format.space_after = Pt(12)
+        section_number += 1
+    
+    # RECOMMENDATIONS SECTION (same as technical report)
+    if data.get('recommendations'):
+        rec_heading = doc.add_heading(f'{section_number}. RECOMMENDATIONS', level=1)
+        style_heading(rec_heading, level=1)
+        
+        rec_para = doc.add_paragraph()
+        rec_text = rec_para.add_run(data.get('recommendations', ''))
+        rec_text.font.size = Pt(11)
+        rec_text.font.name = 'Arial'
+        rec_para.paragraph_format.line_spacing = 1.5
+        rec_para.paragraph_format.space_after = Pt(12)
+        section_number += 1
+    
+    # Add page break before signatures
+    doc.add_page_break()
+    
+    # SIGNATURE SECTION (same as technical report)
+    sig_heading = doc.add_heading('ACKNOWLEDGMENT AND SIGNATURES', level=1)
+    style_heading(sig_heading, level=1)
+    
+    # Add acknowledgment text
+    ack_para = doc.add_paragraph()
+    ack_text = ack_para.add_run(
+        "The undersigned acknowledge that the service described in this report has been "
+        "completed satisfactorily and in accordance with the agreed specifications."
+    )
+    ack_text.font.size = Pt(10)
+    ack_text.font.name = 'Arial'
+    ack_text.font.italic = True
+    ack_para.paragraph_format.space_after = Pt(24)
+    
+    # Create signature table
+    sig_table = doc.add_table(rows=4, cols=2)
+    sig_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    
+    # Configure signature columns
+    for col in sig_table.columns:
+        for cell in col.cells:
+            cell.width = Inches(3)
+    
+    # Technician signature
+    sig_table.cell(0, 0).text = "Service Technician:"
+    
+    # Add signature image if available
+    if data.get('technician_signature'):
+        sig_cell = sig_table.cell(1, 0)
+        sig_para = sig_cell.paragraphs[0]
+        sig_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = sig_para.add_run()
+        run.add_picture(data.get('technician_signature'), width=Inches(1.5))
+    else:
+        sig_table.cell(1, 0).text = "_" * 35
+    
+    sig_table.cell(2, 0).text = data.get('technician_name', '')
+    sig_table.cell(3, 0).text = f"Date: {datetime.now().strftime('%B %d, %Y')}"
+    
+    # Customer signature
+    sig_table.cell(0, 1).text = "Customer Representative:"
+    
+    # Add customer signature image if available
+    if data.get('customer_signature'):
+        sig_cell = sig_table.cell(1, 1)
+        sig_para = sig_cell.paragraphs[0]
+        sig_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = sig_para.add_run()
+        run.add_picture(data.get('customer_signature'), width=Inches(1.5))
+    else:
+        sig_table.cell(1, 1).text = "_" * 35
+    
+    sig_table.cell(2, 1).text = data.get('customer_signatory', data.get('customer_name', ''))
+    sig_table.cell(3, 1).text = f"Date: {datetime.now().strftime('%B %d, %Y')}"
+    
+    # Style signature table
+    for row in sig_table.rows:
+        for cell in row.cells:
+            cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            for run in cell.paragraphs[0].runs:
+                run.font.size = Pt(11)
+                run.font.name = 'Arial'
+            set_cell_margins(cell, top=0.1, bottom=0.1)
+    
+    # Make labels bold
+    sig_table.cell(0, 0).paragraphs[0].runs[0].font.bold = True
+    sig_table.cell(0, 1).paragraphs[0].runs[0].font.bold = True
+    
+    # Add final note
+    doc.add_paragraph()
+    note_para = doc.add_paragraph()
+    note_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    note_text = note_para.add_run(
+        "This report is confidential and proprietary.\n"
+        "For service inquiries, please contact our Service Department."
+    )
+    note_text.font.size = Pt(9)
+    note_text.font.name = 'Arial'
     note_text.font.color.rgb = RGBColor(128, 128, 128)
     
     # Save to bytes
@@ -1042,16 +1629,19 @@ def main():
         st.markdown("### Report Type Selection")
         report_type = st.selectbox(
             "Select Report Type",
-            ["Technical Report", "Testing and Commissioning Report (Coming Soon)", "General Service Report (Coming Soon)"],
+            ["Technical Report", "General Service Report", "Testing and Commissioning Report (Coming Soon)"],
             index=0
         )
         
-        if report_type != "Technical Report":
+        if report_type == "Testing and Commissioning Report (Coming Soon)":
             st.info("This report type will be available in future versions.")
             st.stop()
     
-    # Main form for Technical Report
-    st.markdown('<h2 class="section-header">Technical Report Form</h2>', unsafe_allow_html=True)
+    # Main form based on report type
+    if report_type == "Technical Report":
+        st.markdown('<h2 class="section-header">Technical Report Form</h2>', unsafe_allow_html=True)
+    else:  # General Service Report
+        st.markdown('<h2 class="section-header">General Service Report Form</h2>', unsafe_allow_html=True)
     
     # General Information Section (outside form)
     st.markdown("### General Information")
@@ -1078,238 +1668,349 @@ def main():
         )
         date = st.date_input("Report Date", value=datetime.now(), key="report_date")
     
-    # Kitchen and Equipment Inspection Section
-    st.markdown("### Kitchen and Equipment Inspection")
+    # Kitchen and Equipment Inspection Section (only for Technical Report)
+    if report_type == "Technical Report":
+        st.markdown("### Kitchen and Equipment Inspection")
+        
+        # Number of kitchens
+        # Initialize session state for kitchen count if not exists
+        if "num_kitchens" not in st.session_state:
+            st.session_state["num_kitchens"] = len(st.session_state.kitchen_list) if st.session_state.kitchen_list else 1
     
-    # Number of kitchens
-    # Initialize session state for kitchen count if not exists
-    if "num_kitchens" not in st.session_state:
-        st.session_state["num_kitchens"] = len(st.session_state.kitchen_list) if st.session_state.kitchen_list else 1
-    
-    num_kitchens = st.number_input(
-        "Number of Kitchens",
-        min_value=1,
-        key="num_kitchens"
-    )
-    
-    # Get the number from session state to ensure consistency
-    num_kitchens = st.session_state["num_kitchens"]
-    
-    # Initialize or adjust kitchen list
-    if len(st.session_state.kitchen_list) != num_kitchens:
-        if len(st.session_state.kitchen_list) < num_kitchens:
-            # Add new kitchens
-            for i in range(len(st.session_state.kitchen_list), num_kitchens):
-                kitchen_id = f"kitchen_{i}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                st.session_state.kitchen_list.append({
-                    'id': kitchen_id,
-                    'name': f'Kitchen {i + 1}',
-                    'equipment_list': []
-                })
-        else:
-            # Remove kitchens
-            st.session_state.kitchen_list = st.session_state.kitchen_list[:num_kitchens]
-    
-    # Display kitchens and their equipment
-    for kitchen_idx, kitchen in enumerate(st.session_state.kitchen_list):
-        with st.expander(f"🏪 Kitchen #{kitchen_idx + 1}", expanded=True):
-            # Kitchen name input
-            kitchen_name_key = f"kitchen_name_{kitchen_idx}"
-            if kitchen_name_key not in st.session_state:
-                st.session_state[kitchen_name_key] = kitchen.get('name', f'Kitchen {kitchen_idx + 1}')
-            
-            kitchen_name = st.text_input(
-                "Kitchen Name",
-                key=kitchen_name_key,
-                placeholder="e.g., Main Kitchen, Prep Kitchen, etc."
-            )
-            kitchen['name'] = st.session_state[kitchen_name_key]
-            
-            # Number of equipment in this kitchen
-            num_equipment_key = f"num_equipment_{kitchen_idx}"
-            
-            # Initialize session state for equipment count if not exists
-            if num_equipment_key not in st.session_state:
-                st.session_state[num_equipment_key] = len(kitchen.get('equipment_list', []))
-            
-            num_equipment = st.number_input(
-                f"Number of Equipment in {kitchen['name']}",
-                min_value=0,
-                max_value=20,
-                key=num_equipment_key
-            )
-            
-            # Get the number from session state to ensure consistency
-            num_equipment = st.session_state[num_equipment_key]
-            
-            # Initialize or adjust equipment list for this kitchen
-            if 'equipment_list' not in kitchen:
-                kitchen['equipment_list'] = []
+        num_kitchens = st.number_input(
+            "Number of Kitchens",
+            min_value=1,
+            key="num_kitchens"
+        )
+        
+        # Get the number from session state to ensure consistency
+        num_kitchens = st.session_state["num_kitchens"]
+        
+        # Initialize or adjust kitchen list
+        if len(st.session_state.kitchen_list) != num_kitchens:
+            if len(st.session_state.kitchen_list) < num_kitchens:
+                # Add new kitchens
+                for i in range(len(st.session_state.kitchen_list), num_kitchens):
+                    kitchen_id = f"kitchen_{i}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                    st.session_state.kitchen_list.append({
+                        'id': kitchen_id,
+                        'name': f'Kitchen {i + 1}',
+                        'equipment_list': []
+                    })
+            else:
+                # Remove kitchens
+                st.session_state.kitchen_list = st.session_state.kitchen_list[:num_kitchens]
+        
+        # Display kitchens and their equipment
+        for kitchen_idx, kitchen in enumerate(st.session_state.kitchen_list):
+            with st.expander(f"🏪 Kitchen #{kitchen_idx + 1}", expanded=True):
+                # Kitchen name input
+                kitchen_name_key = f"kitchen_name_{kitchen_idx}"
+                if kitchen_name_key not in st.session_state:
+                    st.session_state[kitchen_name_key] = kitchen.get('name', f'Kitchen {kitchen_idx + 1}')
                 
-            current_count = len(kitchen['equipment_list'])
-            if current_count != num_equipment:
-                if current_count < num_equipment:
-                    # Add new equipment - only add what's needed
-                    items_to_add = num_equipment - current_count
-                    for i in range(items_to_add):
-                        equipment_id = f"equipment_{kitchen_idx}_{current_count + i}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
-                        kitchen['equipment_list'].append({
-                            'id': equipment_id,
-                            'type': '',
-                            'with_marvel': False,
-                            'location': '',
-                            'inspection_data': {},
-                            'photos': {}
-                        })
-                elif current_count > num_equipment:
-                    # Remove excess equipment
-                    kitchen['equipment_list'] = kitchen['equipment_list'][:num_equipment]
-            
-            # Display equipment for this kitchen
-            if kitchen['equipment_list']:
-                st.markdown(f"#### Equipment in {kitchen['name']} ({len(kitchen['equipment_list'])} items)")
-                for equip_idx, equipment in enumerate(kitchen['equipment_list']):
-                    with st.container():
-                        st.markdown(f"**Equipment #{equip_idx + 1}**")
-                        col1, col2 = st.columns(2)
-                        
-                        # Create unique keys including kitchen index
-                        equipment_key_prefix = f"k{kitchen_idx}_e{equip_idx}"
-                        
-                        with col1:
-                            # Equipment type selection
-                            equip_type_key = f"equip_type_{equipment_key_prefix}"
-                            # Initialize if not exists
-                            if equip_type_key not in st.session_state:
-                                st.session_state[equip_type_key] = equipment.get('type', '')
+                kitchen_name = st.text_input(
+                    "Kitchen Name",
+                    key=kitchen_name_key,
+                    placeholder="e.g., Main Kitchen, Prep Kitchen, etc."
+                )
+                kitchen['name'] = st.session_state[kitchen_name_key]
+                
+                # Number of equipment in this kitchen
+                num_equipment_key = f"num_equipment_{kitchen_idx}"
+                
+                # Initialize session state for equipment count if not exists
+                if num_equipment_key not in st.session_state:
+                    st.session_state[num_equipment_key] = len(kitchen.get('equipment_list', []))
+                
+                num_equipment = st.number_input(
+                    f"Number of Equipment in {kitchen['name']}",
+                    min_value=0,
+                    max_value=20,
+                    key=num_equipment_key
+                )
+                
+                # Get the number from session state to ensure consistency
+                num_equipment = st.session_state[num_equipment_key]
+                
+                # Initialize or adjust equipment list for this kitchen
+                if 'equipment_list' not in kitchen:
+                    kitchen['equipment_list'] = []
+                    
+                current_count = len(kitchen['equipment_list'])
+                if current_count != num_equipment:
+                    if current_count < num_equipment:
+                        # Add new equipment - only add what's needed
+                        items_to_add = num_equipment - current_count
+                        for i in range(items_to_add):
+                            equipment_id = f"equipment_{kitchen_idx}_{current_count + i}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
+                            kitchen['equipment_list'].append({
+                                'id': equipment_id,
+                                'type': '',
+                                'with_marvel': False,
+                                'location': '',
+                                'inspection_data': {},
+                                'photos': {}
+                            })
+                    elif current_count > num_equipment:
+                        # Remove excess equipment
+                        kitchen['equipment_list'] = kitchen['equipment_list'][:num_equipment]
+                
+                # Display equipment for this kitchen
+                if kitchen['equipment_list']:
+                    st.markdown(f"#### Equipment in {kitchen['name']} ({len(kitchen['equipment_list'])} items)")
+                    for equip_idx, equipment in enumerate(kitchen['equipment_list']):
+                        with st.container():
+                            st.markdown(f"**Equipment #{equip_idx + 1}**")
+                            col1, col2 = st.columns(2)
                             
-                            # Store previous equipment type to detect changes
-                            previous_equip_type = equipment.get('type', '')
-                                
-                            st.selectbox(
-                                "Equipment Type*",
-                                options=[''] + list(EQUIPMENT_TYPES.keys()),
-                                format_func=lambda x: EQUIPMENT_TYPES[x]["name"] if x else "Select equipment type",
-                                key=equip_type_key
-                            )
-                            # Update the equipment data from session state
-                            equipment['type'] = st.session_state[equip_type_key]
+                            # Create unique keys including kitchen index
+                            equipment_key_prefix = f"k{kitchen_idx}_e{equip_idx}"
                             
-                            # If equipment type changed, clear all inspection data for this equipment
-                            if previous_equip_type != equipment['type'] and previous_equip_type:
-                                # Clear all inspection data (except Marvel-prefixed ones)
-                                if 'inspection_data' in equipment:
-                                    keys_to_remove = []
-                                    for key in equipment['inspection_data'].keys():
-                                        if not key.startswith('marvel_'):  # Keep Marvel data if exists
-                                            keys_to_remove.append(key)
-                                    for key in keys_to_remove:
-                                        del equipment['inspection_data'][key]
-                                
-                                # Clear all photos (except Marvel-related ones)
-                                if 'photos' in equipment:
-                                    keys_to_remove = []
-                                    for key in equipment['photos'].keys():
-                                        if 'marvel_' not in key:  # Keep Marvel photos if exists
-                                            keys_to_remove.append(key)
-                                    for key in keys_to_remove:
-                                        del equipment['photos'][key]
-                                
-                                # Clear related session state keys for this equipment
-                                keys_to_clear = []
-                                for key in st.session_state.keys():
-                                    if equipment_key_prefix in key and (key.startswith('q_') or key.startswith('comment_') or key.startswith('photo_')):
-                                        if 'marvel_' not in key:  # Don't clear Marvel-related keys
-                                            keys_to_clear.append(key)
-                                for key in keys_to_clear:
-                                    del st.session_state[key]
-                            
-                            # Only show Marvel checkbox if equipment type is not ECOLOGY
-                            if equipment['type'] != 'ECOLOGY':
-                                marvel_key = f"with_marvel_{equipment_key_prefix}"
+                            with col1:
+                                # Equipment type selection
+                                equip_type_key = f"equip_type_{equipment_key_prefix}"
                                 # Initialize if not exists
-                                if marvel_key not in st.session_state:
-                                    st.session_state[marvel_key] = equipment.get('with_marvel', False)
-                                    
-                                # Store previous state to detect changes
-                                previous_marvel_state = equipment.get('with_marvel', False)
+                                if equip_type_key not in st.session_state:
+                                    st.session_state[equip_type_key] = equipment.get('type', '')
                                 
-                                with_marvel = st.checkbox(
-                                    "With Marvel System",
-                                    key=marvel_key
+                                # Store previous equipment type to detect changes
+                                previous_equip_type = equipment.get('type', '')
+                                    
+                                st.selectbox(
+                                    "Equipment Type*",
+                                    options=[''] + list(EQUIPMENT_TYPES.keys()),
+                                    format_func=lambda x: EQUIPMENT_TYPES[x]["name"] if x else "Select equipment type",
+                                    key=equip_type_key
                                 )
                                 # Update the equipment data from session state
-                                equipment['with_marvel'] = st.session_state[marvel_key]
-                            else:
-                                # For ECOLOGY, always set with_marvel to False
-                                equipment['with_marvel'] = False
-                                previous_marvel_state = False
-                            
-                            # If Marvel was unchecked, clear all Marvel-related data
-                            if previous_marvel_state and not equipment['with_marvel']:
-                                # Clear Marvel inspection data
-                                if 'inspection_data' in equipment:
-                                    keys_to_remove = []
-                                    for key in equipment['inspection_data'].keys():
-                                        if key.startswith('marvel_'):
-                                            keys_to_remove.append(key)
-                                    for key in keys_to_remove:
-                                        del equipment['inspection_data'][key]
+                                equipment['type'] = st.session_state[equip_type_key]
                                 
-                                # Clear Marvel photos
-                                if 'photos' in equipment:
-                                    keys_to_remove = []
-                                    for key in equipment['photos'].keys():
-                                        if 'marvel_' in key:
-                                            keys_to_remove.append(key)
-                                    for key in keys_to_remove:
-                                        del equipment['photos'][key]
+                                # If equipment type changed, clear all inspection data for this equipment
+                                if previous_equip_type != equipment['type'] and previous_equip_type:
+                                    # Clear all inspection data (except Marvel-prefixed ones)
+                                    if 'inspection_data' in equipment:
+                                        keys_to_remove = []
+                                        for key in equipment['inspection_data'].keys():
+                                            if not key.startswith('marvel_'):  # Keep Marvel data if exists
+                                                keys_to_remove.append(key)
+                                        for key in keys_to_remove:
+                                            del equipment['inspection_data'][key]
+                                    
+                                    # Clear all photos (except Marvel-related ones)
+                                    if 'photos' in equipment:
+                                        keys_to_remove = []
+                                        for key in equipment['photos'].keys():
+                                            if 'marvel_' not in key:  # Keep Marvel photos if exists
+                                                keys_to_remove.append(key)
+                                        for key in keys_to_remove:
+                                            del equipment['photos'][key]
+                                    
+                                    # Clear related session state keys for this equipment
+                                    keys_to_clear = []
+                                    for key in st.session_state.keys():
+                                        if equipment_key_prefix in key and (key.startswith('q_') or key.startswith('comment_') or key.startswith('photo_')):
+                                            if 'marvel_' not in key:  # Don't clear Marvel-related keys
+                                                keys_to_clear.append(key)
+                                    for key in keys_to_clear:
+                                        del st.session_state[key]
                                 
-                                # Clear Marvel-related session state keys
-                                keys_to_clear = []
-                                for key in st.session_state.keys():
-                                    if f"marvel_" in key and equipment_key_prefix in key:
-                                        keys_to_clear.append(key)
-                                for key in keys_to_clear:
-                                    del st.session_state[key]
-                        
-                        with col2:
-                            location_key = f"location_{equipment_key_prefix}"
-                            # Initialize if not exists
-                            if location_key not in st.session_state:
-                                st.session_state[location_key] = equipment.get('location', '')
+                                # Only show Marvel checkbox if equipment type is not ECOLOGY
+                                if equipment['type'] != 'ECOLOGY':
+                                    marvel_key = f"with_marvel_{equipment_key_prefix}"
+                                    # Initialize if not exists
+                                    if marvel_key not in st.session_state:
+                                        st.session_state[marvel_key] = equipment.get('with_marvel', False)
+                                        
+                                    # Store previous state to detect changes
+                                    previous_marvel_state = equipment.get('with_marvel', False)
+                                    
+                                    with_marvel = st.checkbox(
+                                        "With Marvel System",
+                                        key=marvel_key
+                                    )
+                                    # Update the equipment data from session state
+                                    equipment['with_marvel'] = st.session_state[marvel_key]
+                                else:
+                                    # For ECOLOGY, always set with_marvel to False
+                                    equipment['with_marvel'] = False
+                                    previous_marvel_state = False
                                 
-                            st.text_input(
-                                "Location*",
-                                key=location_key,
-                                placeholder="e.g., Near entrance, Back wall, etc."
-                            )
-                            # Update the equipment data from session state
-                            equipment['location'] = st.session_state[location_key]
-                        
-                        # If equipment type is selected, show checklist
-                        if equipment['type']:
-                            st.markdown("##### Inspection Checklist")
-                            equipment_config = EQUIPMENT_TYPES[equipment['type']]
+                                # If Marvel was unchecked, clear all Marvel-related data
+                                if previous_marvel_state and not equipment['with_marvel']:
+                                    # Clear Marvel inspection data
+                                    if 'inspection_data' in equipment:
+                                        keys_to_remove = []
+                                        for key in equipment['inspection_data'].keys():
+                                            if key.startswith('marvel_'):
+                                                keys_to_remove.append(key)
+                                        for key in keys_to_remove:
+                                            del equipment['inspection_data'][key]
+                                    
+                                    # Clear Marvel photos
+                                    if 'photos' in equipment:
+                                        keys_to_remove = []
+                                        for key in equipment['photos'].keys():
+                                            if 'marvel_' in key:
+                                                keys_to_remove.append(key)
+                                        for key in keys_to_remove:
+                                            del equipment['photos'][key]
+                                    
+                                    # Clear Marvel-related session state keys
+                                    keys_to_clear = []
+                                    for key in st.session_state.keys():
+                                        if f"marvel_" in key and equipment_key_prefix in key:
+                                            keys_to_clear.append(key)
+                                    for key in keys_to_clear:
+                                        del st.session_state[key]
                             
-                            # Render checklist items with full conditional logic
-                            for i, item in enumerate(equipment_config['checklist']):
-                                if i > 0:
-                                    st.markdown("<hr style='margin: 0.5rem 0;'>", unsafe_allow_html=True)  # Thinner separator
-                                render_checklist_item(equipment, item, equipment_key_prefix)
+                            with col2:
+                                location_key = f"location_{equipment_key_prefix}"
+                                # Initialize if not exists
+                                if location_key not in st.session_state:
+                                    st.session_state[location_key] = equipment.get('location', '')
+                                    
+                                st.text_input(
+                                    "Location*",
+                                    key=location_key,
+                                    placeholder="e.g., Near entrance, Back wall, etc."
+                                )
+                                # Update the equipment data from session state
+                                equipment['location'] = st.session_state[location_key]
                             
-                            # If "With Marvel" is checked, add Marvel checklist
-                            if equipment.get('with_marvel', False):
-                                st.markdown("##### Marvel System Checklist")
-                                for i, item in enumerate(MARVEL_CHECKLIST):
+                            # If equipment type is selected, show checklist
+                            if equipment['type']:
+                                st.markdown("##### Inspection Checklist")
+                                equipment_config = EQUIPMENT_TYPES[equipment['type']]
+                                
+                                # Render checklist items with full conditional logic
+                                for i, item in enumerate(equipment_config['checklist']):
                                     if i > 0:
-                                        st.markdown("<hr style='margin: 0.5rem 0;'>", unsafe_allow_html=True)
-                                    # Add prefix to distinguish Marvel questions
-                                    render_checklist_item(equipment, item, equipment_key_prefix, prefix="marvel_")
+                                        st.markdown("<hr style='margin: 0.5rem 0;'>", unsafe_allow_html=True)  # Thinner separator
+                                    render_checklist_item(equipment, item, equipment_key_prefix)
+                                
+                                # If "With Marvel" is checked, add Marvel checklist
+                                if equipment.get('with_marvel', False):
+                                    st.markdown("##### Marvel System Checklist")
+                                    for i, item in enumerate(MARVEL_CHECKLIST):
+                                        if i > 0:
+                                            st.markdown("<hr style='margin: 0.5rem 0;'>", unsafe_allow_html=True)
+                                        # Add prefix to distinguish Marvel questions
+                                        render_checklist_item(equipment, item, equipment_key_prefix, prefix="marvel_")
+                            
+                            # Add separator between equipment
+                            if equip_idx < len(kitchen['equipment_list']) - 1:
+                                st.markdown("---")
+        
+    # Work Performed Section - Different for each report type
+    if report_type == "General Service Report":
+        st.markdown("### Work Performed")
+        
+        # Initialize work performed list in session state if not exists
+        if 'work_performed_list' not in st.session_state:
+            st.session_state.work_performed_list = []
+        
+        # Initialize a counter for work items to ensure unique keys
+        if 'work_performed_counter' not in st.session_state:
+            st.session_state.work_performed_counter = 0
+        
+        # Function to add a work performed item
+        def add_work_performed():
+            import time
+            unique_id = f"{st.session_state.work_performed_counter}_{int(time.time() * 1000)}"
+            work_number = len(st.session_state.work_performed_list) + 1
+            st.session_state.work_performed_list.append({
+                'id': unique_id,
+                'title': f'Work Performed {work_number}',
+                'description': '',
+                'photos': [],
+                'photo_descriptions': {}
+            })
+            st.session_state.work_performed_counter += 1
+        
+        # Function to remove a work performed item
+        def remove_work_performed(index):
+            st.session_state.work_performed_list.pop(index)
+        
+        # Add new work performed button
+        col_add1, col_add2 = st.columns([1, 3])
+        with col_add1:
+            if st.button("➕ Add Work Item", type="secondary", key="add_work_performed_btn"):
+                add_work_performed()
+                st.rerun()
+        
+        # Display existing work performed items
+        items_to_remove = []
+        for i, work_item in enumerate(st.session_state.work_performed_list):
+            with st.expander(f"Work Item {i+1}", expanded=True):
+                # Work title
+                title_key = f"work_title_{work_item['id']}"
+                if title_key not in st.session_state:
+                    st.session_state[title_key] = work_item.get('title', f'Work Performed {i+1}')
+                
+                title = st.text_input(
+                    f"Work Title {i+1}",
+                    key=title_key,
+                    placeholder="Title of work performed"
+                )
+                work_item['title'] = st.session_state[title_key]
+                
+                # Work description
+                desc_key = f"work_desc_{work_item['id']}"
+                if desc_key not in st.session_state:
+                    st.session_state[desc_key] = work_item.get('description', '')
+                
+                description = st.text_area(
+                    f"Work Description {i+1}*",
+                    key=desc_key,
+                    placeholder="Describe the work performed (e.g., Replaced filters, Cleaned hood system, etc.)",
+                    height=80
+                )
+                work_item['description'] = st.session_state[desc_key]
+                
+                # Photo upload for this work item
+                st.markdown("#### Photos for this work item")
+                uploaded_files = st.file_uploader(
+                    f"Upload photos for Work Item {i+1}",
+                    type=['png', 'jpg', 'jpeg'],
+                    key=f"work_photos_{work_item['id']}",
+                    accept_multiple_files=True
+                )
+                
+                if uploaded_files:
+                    work_item['photos'] = uploaded_files
+                    
+                    # Photo descriptions
+                    st.markdown("##### Photo Descriptions")
+                    for j, photo in enumerate(uploaded_files):
+                        photo_desc_key = f"work_photo_desc_{work_item['id']}_{j}"
+                        if photo_desc_key not in st.session_state:
+                            # Auto-fill with default description if empty
+                            default_desc = f"{work_item.get('title', f'Work Item {i+1}')} - Photo {j+1}"
+                            st.session_state[photo_desc_key] = work_item.get('photo_descriptions', {}).get(str(j), default_desc)
                         
-                        # Add separator between equipment
-                        if equip_idx < len(kitchen['equipment_list']) - 1:
-                            st.markdown("---")
+                        photo_desc = st.text_input(
+                            f"Description for Photo {j+1}",
+                            key=photo_desc_key,
+                            placeholder="Brief description of what this photo shows"
+                        )
+                        work_item['photo_descriptions'][str(j)] = st.session_state[photo_desc_key]
+                
+                # Remove button
+                col1, col2 = st.columns([3, 1])
+                with col2:
+                    if st.button(f"🗑️ Remove", key=f"remove_work_{work_item['id']}", type="secondary"):
+                        items_to_remove.append(i)
+        
+        # Remove items marked for deletion
+        if items_to_remove:
+            for index in reversed(items_to_remove):
+                remove_work_performed(index)
+            st.rerun()
+        
+        # If no work items added, show a note
+        if len(st.session_state.work_performed_list) == 0:
+            st.info("No work items added. Click 'Add Work Item' to add work performed.")
     
     # Spare Parts Section (outside form to allow button interactions)
     st.markdown("### Spare Parts Required")
@@ -1400,13 +2101,14 @@ def main():
     
     # Continue with the rest of the form
     with st.form("technical_report_form"):
-        # Work Performed Section
-        st.markdown("### Work Performed")
-        work_performed = st.text_area(
-            "Describe Work Performed*",
-            placeholder="Detail all maintenance, repairs, or services completed...",
-            height=120
-        )
+        # Work Performed Section for Technical Report
+        if report_type == "Technical Report":
+            st.markdown("### Work Performed")
+            work_performed = st.text_area(
+                "Describe Work Performed*",
+                placeholder="Detail all maintenance, repairs, or services completed...",
+                height=120
+            )
         
         # Recommendations Section
         st.markdown("### Recommendations")
@@ -1521,19 +2223,43 @@ def main():
             visit_class = st.session_state.get('visit_class', '')
             date = st.session_state.get('report_date', datetime.now())
             
-            # Validation
-            required_fields = {
-                "Customer's Name": customer_name,
-                "Project Name": project_name,
-                "Contact Person": contact_person,
-                "Outlet/Location": outlet_location,
-                "Contact Number": contact_number,
-                "Visit Type": visit_type,
-                "Work Performed": work_performed,
-                "Spare Parts": st.session_state.get('spare_parts', []),
-                "Technician Name": technician_name,
-                "Technician ID": technician_id
-            }
+            # Validation - different based on report type
+            if report_type == "Technical Report":
+                required_fields = {
+                    "Customer's Name": customer_name,
+                    "Project Name": project_name,
+                    "Contact Person": contact_person,
+                    "Outlet/Location": outlet_location,
+                    "Contact Number": contact_number,
+                    "Visit Type": visit_type,
+                    "Work Performed": work_performed,
+                    "Spare Parts": st.session_state.get('spare_parts', []),
+                    "Technician Name": technician_name,
+                    "Technician ID": technician_id
+                }
+            else:  # General Service Report
+                # Check work performed list
+                work_items_valid = True
+                if not st.session_state.get('work_performed_list'):
+                    work_items_valid = False
+                else:
+                    for item in st.session_state.work_performed_list:
+                        if not item.get('description', '').strip():
+                            work_items_valid = False
+                            break
+                
+                required_fields = {
+                    "Customer's Name": customer_name,
+                    "Project Name": project_name,
+                    "Contact Person": contact_person,
+                    "Outlet/Location": outlet_location,
+                    "Contact Number": contact_number,
+                    "Visit Type": visit_type,
+                    "Work Performed Items": "Valid" if work_items_valid else "",
+                    "Spare Parts": st.session_state.get('spare_parts', []),
+                    "Technician Name": technician_name,
+                    "Technician ID": technician_id
+                }
             
             missing_fields = [field for field, value in required_fields.items() if not value]
             
@@ -1614,8 +2340,10 @@ def main():
                     img_bytes.seek(0)
                     customer_signature_img = img_bytes
             
-            # Collect all data
-            report_data = {
+            # Collect all data based on report type
+            if report_type == "Technical Report":
+                report_data = {
+                    'report_type': report_type,
                     'customer_name': customer_name,
                     'project_name': project_name,
                     'contact_person': contact_person,
@@ -1635,7 +2363,28 @@ def main():
                     'technician_signature': signature_img,
                     'customer_signatory': st.session_state.get('customer_signatory', customer_name),
                     'customer_signature': customer_signature_img
-            }
+                }
+            else:  # General Service Report
+                report_data = {
+                    'report_type': report_type,
+                    'customer_name': customer_name,
+                    'project_name': project_name,
+                    'contact_person': contact_person,
+                    'outlet_location': outlet_location,
+                    'contact_number': contact_number,
+                    'visit_type': visit_type,
+                    'visit_class': visit_class,
+                    'date': date.strftime('%Y-%m-%d'),
+                    'work_performed_list': st.session_state.get('work_performed_list', []),
+                    'spare_parts': st.session_state.get('spare_parts', []),
+                    'recommendations': recommendations,
+                    'technician_name': technician_name,
+                    'technician_id': technician_id,
+                    'service_date': service_date.strftime('%Y-%m-%d'),
+                    'technician_signature': signature_img,
+                    'customer_signatory': st.session_state.get('customer_signatory', customer_name),
+                    'customer_signature': customer_signature_img
+                }
             
             # Store data in session state for download outside form
             st.session_state.report_data = report_data
@@ -1669,13 +2418,20 @@ def main():
     # Handle report download outside of form
     if st.session_state.get('report_generated', False):
         try:
-            # Generate the report
-            doc_bytes = create_technical_report(st.session_state.report_data)
+            # Generate the report based on type
+            report_type = st.session_state.report_data.get('report_type', 'Technical Report')
+            
+            if report_type == "Technical Report":
+                doc_bytes = create_technical_report(st.session_state.report_data)
+                filename_prefix = "Technical_Report"
+            else:  # General Service Report
+                doc_bytes = create_general_service_report(st.session_state.report_data)
+                filename_prefix = "General_Service_Report"
             
             # Create filename
             customer_name = st.session_state.saved_customer_name
             date = st.session_state.saved_report_date
-            filename = f"Technical_Report_{customer_name.replace(' ', '_')}_{date.strftime('%Y%m%d')}.docx"
+            filename = f"{filename_prefix}_{customer_name.replace(' ', '_')}_{date.strftime('%Y%m%d')}.docx"
             
             # Success message
             st.success("✅ Report generated successfully!")

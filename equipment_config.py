@@ -351,8 +351,7 @@ EQUIPMENT_TYPES = {
                                 "id": "alarm_count",
                                 "question": "How many alarms are registered?",
                                 "type": "number",
-                                "photo": True,
-                                "comment": True
+                                "generates_alarms": True
                             }
                         ]
                     },
@@ -962,54 +961,71 @@ EQUIPMENT_TYPES = {
             {
                 "id": "control_panel",
                 "question": "Does the ecology unit have a control panel?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
-                    "yes": {"photo": True},
-                    "no": {"comment": True},
-                    "n/a": {"comment": True}
+                    "yes": {
+                        "follow_up": [
+                            {
+                                "id": "touch_screen_operational",
+                                "question": "Is the Ecology unit touch screen operational and without alarms?",
+                                "type": "yes_no",
+                                "conditions": {
+                                    "yes": {"photo": True},
+                                    "no": {"photo": True, "comment": True}
+                                }
+                            }
+                        ]
+                    },
+                    "no": {"comment": True}
                 }
             },
             {
-                "id": "touch_screen_operational",
-                "question": "Is the Ecology unit touch screen operational and without alarms?",
-                "type": "yes_no_na",
+                "id": "vfd_running",
+                "question": "Is the VFD running and in good condition?",
+                "type": "yes_no",
+                "conditions": {
+                    "yes": {"photo": True, "comment": True},
+                    "no": {"photo": True}
+                }
+            },
+            {
+                "id": "vfd_internal_components",
+                "question": "Are the internal components of VFD operational and in good condition?",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {"photo": True},
-                    "no": {"photo": True, "comment": True},
-                    "n/a": {"comment": True}
+                    "no": {"photo": True, "comment": True}
                 }
             },
             {
                 "id": "esp_section",
                 "question": "Is the ESP section available?",
-                "type": "yes_no_na",
+                "type": "yes_no",
                 "conditions": {
                     "yes": {
                         "follow_up": [
                             {
                                 "id": "esp_working",
-                                "question": "Is the ESP Working and in good condition?",
-                                "type": "yes_no_na",
+                                "question": "Is the ESP working and in good condition?",
+                                "type": "yes_no",
                                 "conditions": {
                                     "yes": {"photo": True},
-                                    "no": {"photo": True, "comment": True},
-                                    "n/a": {"comment": True}
+                                    "no": {"photo": True, "comment": True}
                                 }
                             },
                             {
                                 "id": "hvps_working",
                                 "question": "Is the HVPS working and in good condition?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
                                     "yes": {"photo": True},
-                                    "no": {"photo": True, "comment": True},
-                                    "n/a": {"comment": True}
+                                    "no": {"photo": True, "comment": True}
                                 }
                             },
                             {
                                 "id": "esp_autowash",
                                 "question": "Is the ESP with autowash?",
-                                "type": "yes_no_na",
+                                "type": "yes_no",
                                 "conditions": {
                                     "yes": {
                                         "photo": True,
@@ -1017,19 +1033,19 @@ EQUIPMENT_TYPES = {
                                             {
                                                 "id": "autowash_detergent",
                                                 "question": "Does the autowash include detergent?",
-                                                "type": "yes_no_na",
+                                                "type": "yes_no",
                                                 "conditions": {
                                                     "yes": {"photo": True},
                                                     "no": {}
                                                 }
                                             },
                                             {
-                                                "id": "water_supply",
+                                                "id": "water_supply_available",
                                                 "question": "Is the water supply available?",
-                                                "type": "yes_no_na",
+                                                "type": "yes_no",
                                                 "conditions": {
-                                                    "yes": {"photo": True},
-                                                    "no": {"photo": True, "comment": True}
+                                                    "yes": {},
+                                                    "no": {"photo": True}
                                                 }
                                             }
                                         ]
@@ -1039,105 +1055,200 @@ EQUIPMENT_TYPES = {
                             }
                         ]
                     },
-                    "no": {},
-                    "n/a": {"comment": True}
+                    "no": {}
                 }
             },
             {
-                "id": "filter_types",
-                "question": "What are the filters available in the ecology unit?",
-                "type": "multi_select",
-                "options": [
-                    "PRE FILTERS WASHABLE",
-                    "PRE FILTERS DISPOSABLE",
-                    "BAG FILTERS",
-                    "ELF BAG FILTERS",
-                    "HEPA FILTERS",
-                    "CARBON FILTERS"
-                ],
-                "follow_up_per_option": {
-                    "PRE FILTERS WASHABLE": [
-                        {
-                            "id": "pre_filters_size",
-                            "question": "Pre-filter size?",
-                            "type": "select",
-                            "options": ["HALF SIZE", "FULL SIZE", "BOTH"]
-                        },
-                        {
-                            "id": "pre_filters_quantity",
-                            "question": "Quantity of pre-filters?",
-                            "type": "number"
-                        },
-                        {
-                            "id": "pre_filters_dimensions",
-                            "question": "Pre-filter dimensions?",
-                            "type": "text"
-                        }
-                    ],
-                    "PRE FILTERS DISPOSABLE": [
-                        {
-                            "id": "pre_filters_disp_size",
-                            "question": "Pre-filter size?",
-                            "type": "select",
-                            "options": ["HALF SIZE", "FULL SIZE", "BOTH"]
-                        },
-                        {
-                            "id": "pre_filters_disp_quantity",
-                            "question": "Quantity of pre-filters?",
-                            "type": "number"
-                        },
-                        {
-                            "id": "pre_filters_disp_dimensions",
-                            "question": "Pre-filter dimensions?",
-                            "type": "text"
-                        }
-                    ],
-                    "BAG FILTERS": [
-                        {
-                            "id": "bag_filter_type",
-                            "question": "Bag filter type?",
-                            "type": "select",
-                            "options": ["ELF", "Normal"],
-                            "photo": True
-                        },
-                        {
-                            "id": "bag_filters_quantity",
-                            "question": "Quantity of bag filters?",
-                            "type": "number"
-                        },
-                        {
-                            "id": "bag_filters_dimensions",
-                            "question": "Bag filter dimensions?",
-                            "type": "text"
-                        }
-                    ],
-                    "HEPA FILTERS": [
-                        {
-                            "id": "hepa_filter_type",
-                            "question": "HEPA filter type?",
-                            "type": "select",
-                            "options": ["V-TYPE", "Normal", "Other"],
-                            "photo": True
-                        },
-                        {
-                            "id": "hepa_filters_quantity",
-                            "question": "Quantity of HEPA filters?",
-                            "type": "number"
-                        },
-                        {
-                            "id": "hepa_filters_dimensions",
-                            "question": "HEPA filter dimensions?",
-                            "type": "text"
-                        }
-                    ],
-                    "CARBON FILTERS": [
-                        {
-                            "id": "carbon_filter_type",
-                            "question": "Carbon filter type?",
-                            "type": "select",
-                            "options": ["V-TYPE", "Panel type", "Other"]
-                        }
-                    ]
+                "id": "pre_filters_section",
+                "question": "Is the PRE filters section available?",
+                "type": "yes_no",
+                "conditions": {
+                    "yes": {
+                        "follow_up": [
+                            {
+                                "id": "pre_filter_type",
+                                "question": "What is the pre filters type?",
+                                "type": "select",
+                                "options": ["Washable", "Non-washable", "Both", "Other"],
+                                "photo": True
+                            },
+                            {
+                                "id": "pre_filters_quantity",
+                                "question": "How many quantities of PRE filters?",
+                                "type": "number"
+                            },
+                            {
+                                "id": "pre_filters_dimensions",
+                                "question": "What are the sizes/dimensions of the PRE Filters?",
+                                "type": "text"
+                            },
+                            {
+                                "id": "pre_filters_issue",
+                                "question": "Is there an issue with PRE Filters?",
+                                "type": "yes_no",
+                                "conditions": {
+                                    "yes": {"photo": True, "comment": True},
+                                    "no": {"photo": True}
+                                }
+                            }
+                        ]
+                    },
+                    "no": {}
+                }
+            },
+            {
+                "id": "bag_filters_section",
+                "question": "Is the BAG Filters section available?",
+                "type": "yes_no",
+                "conditions": {
+                    "yes": {
+                        "follow_up": [
+                            {
+                                "id": "bag_filter_type",
+                                "question": "What is the BAG filter type?",
+                                "type": "select",
+                                "options": ["ELF", "Normal"],
+                                "photo": True
+                            },
+                            {
+                                "id": "bag_filters_quantity",
+                                "question": "How many quantities of BAG Filters?",
+                                "type": "number"
+                            },
+                            {
+                                "id": "bag_filters_dimensions",
+                                "question": "What are the BAG Filters dimensions?",
+                                "type": "text"
+                            },
+                            {
+                                "id": "bag_filters_issue",
+                                "question": "Is there an issue with BAG Filters?",
+                                "type": "yes_no",
+                                "conditions": {
+                                    "yes": {"photo": True, "comment": True},
+                                    "no": {"photo": True}
+                                }
+                            }
+                        ]
+                    },
+                    "no": {}
+                }
+            },
+            {
+                "id": "hepa_filter_section",
+                "question": "Is there HEPA Filter section available?",
+                "type": "yes_no",
+                "conditions": {
+                    "yes": {
+                        "follow_up": [
+                            {
+                                "id": "hepa_filter_type",
+                                "question": "What is the HEPA Filter type?",
+                                "type": "select",
+                                "options": ["V-TYPE", "Normal", "Other"],
+                                "photo": True
+                            },
+                            {
+                                "id": "hepa_filters_quantity",
+                                "question": "How many quantities of HEPA Filters?",
+                                "type": "number"
+                            },
+                            {
+                                "id": "hepa_filters_dimensions",
+                                "question": "What are the dimensions of the HEPA Filters?",
+                                "type": "text"
+                            },
+                            {
+                                "id": "hepa_filters_issue",
+                                "question": "Is there an issue with HEPA Filters?",
+                                "type": "yes_no",
+                                "conditions": {
+                                    "yes": {"photo": True, "comment": True},
+                                    "no": {"photo": True}
+                                }
+                            }
+                        ]
+                    },
+                    "no": {}
+                }
+            },
+            {
+                "id": "carbon_filter_section",
+                "question": "Is there Carbon filter section?",
+                "type": "yes_no",
+                "conditions": {
+                    "yes": {
+                        "follow_up": [
+                            {
+                                "id": "carbon_filter_type",
+                                "question": "What is the Carbon filter type?",
+                                "type": "select",
+                                "options": ["V-TYPE", "Panel type", "Other"]
+                            }
+                        ]
+                    },
+                    "no": {}
+                }
+            },
+            {
+                "id": "uv_section",
+                "question": "Is there UV Section in the ecology unit?",
+                "type": "yes_no",
+                "conditions": {
+                    "yes": {
+                        "follow_up": [
+                            {
+                                "id": "uv_tubes_issue",
+                                "question": "Is there an issue with UV Tubes?",
+                                "type": "yes_no",
+                                "conditions": {
+                                    "yes": {"photo": True, "comment": True},
+                                    "no": {"photo": True}
+                                }
+                            },
+                            {
+                                "id": "uv_ballast_issue",
+                                "question": "Is there an issue with UV ballast?",
+                                "type": "yes_no",
+                                "conditions": {
+                                    "yes": {"photo": True, "comment": True},
+                                    "no": {"photo": True}
+                                }
+                            },
+                            {
+                                "id": "uv_power_cables_issue",
+                                "question": "Is there an issue with the UV Power cables?",
+                                "type": "yes_no",
+                                "conditions": {
+                                    "yes": {"photo": True, "comment": True},
+                                    "no": {"photo": True}
+                                }
+                            }
+                        ]
+                    },
+                    "no": {}
+                }
+            },
+            {
+                "id": "other_comments",
+                "question": "Do you have any comments on ecology unit other than above?",
+                "type": "yes_no",
+                "conditions": {
+                    "yes": {
+                        "comment": True,
+                        "follow_up": [
+                            {
+                                "id": "comment_photos",
+                                "question": "Do you want to add pics?",
+                                "type": "yes_no",
+                                "conditions": {
+                                    "yes": {"photo": True},
+                                    "no": {}
+                                }
+                            }
+                        ]
+                    },
+                    "no": {}
                 }
             }
         ]
