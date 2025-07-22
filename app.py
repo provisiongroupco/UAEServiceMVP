@@ -509,6 +509,8 @@ def collect_form_data():
                 'technician_name': st.session_state.get('technician_name', ''),
                 'technician_id': st.session_state.get('technician_id', ''),
                 'service_date': st.session_state.get('service_date', datetime.now()).isoformat() if st.session_state.get('service_date') else None,
+                'report_type': st.session_state.get('report_type', 'Technical Report'),
+                'work_performed_list': st.session_state.get('work_performed_list', [])
             },
             'kitchen_data': {
                 'num_kitchens': st.session_state.get('num_kitchens', 1),
@@ -528,7 +530,8 @@ def collect_form_data():
                     'type': equipment.get('type', ''),
                     'with_marvel': equipment.get('with_marvel', False),
                     'location': equipment.get('location', ''),
-                    'inspection_data': {}
+                    'inspection_data': {},
+                    'alarm_details': equipment.get('alarm_details', {})
                 }
                 
                 # Include inspection answers but exclude photos
@@ -642,6 +645,20 @@ def restore_form_data(form_data):
                     part['id'] = f"restored_{i}_{int(time.time() * 1000)}"
             st.session_state['spare_parts_counter'] = len(st.session_state['spare_parts'])
         
+        # Restore report type
+        if 'report_type' in basic_info:
+            st.session_state['report_type'] = basic_info['report_type']
+        
+        # Restore work performed list for General Service Report
+        if 'work_performed_list' in basic_info and basic_info['work_performed_list']:
+            st.session_state['work_performed_list'] = basic_info['work_performed_list']
+            # Initialize counter and ensure all work items have unique IDs
+            for i, work_item in enumerate(st.session_state['work_performed_list']):
+                if 'id' not in work_item or not work_item['id']:
+                    # Add unique ID if missing
+                    work_item['id'] = f"restored_work_{i}_{int(time.time() * 1000)}"
+            st.session_state['work_performed_counter'] = len(st.session_state['work_performed_list'])
+        
         # Restore kitchen data
         kitchen_data = form_data.get('kitchen_data', {})
         if kitchen_data.get('num_kitchens'):
@@ -664,6 +681,7 @@ def restore_form_data(form_data):
                         'with_marvel': equipment_info.get('with_marvel', False),
                         'location': equipment_info.get('location', ''),
                         'inspection_data': equipment_info.get('inspection_data', {}),
+                        'alarm_details': equipment_info.get('alarm_details', {}),
                         'photos': {}  # Photos are not shared via links
                     }
                     kitchen['equipment_list'].append(equipment)
