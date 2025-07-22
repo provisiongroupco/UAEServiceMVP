@@ -156,6 +156,26 @@ def render_checklist_item(equipment, item, equip_key_prefix, prefix=""):
         # Update equipment object directly
         equipment['inspection_data'][item_key]['answer'] = st.session_state[widget_key]
         
+        # Handle photo requirement for text fields
+        if answer and item.get('photo'):
+            photo_key = f"photo_{item_key}"
+            uploaded_files = st.file_uploader(
+                f"📷 Upload photo(s) for: {question}",
+                type=['png', 'jpg', 'jpeg'],
+                key=f"photo_{item_key}_{equip_key_prefix}",
+                accept_multiple_files=True
+            )
+            if uploaded_files:
+                if 'photos' not in equipment:
+                    equipment['photos'] = {}
+                # Store multiple photos with numbered keys
+                for i, uploaded_file in enumerate(uploaded_files):
+                    if len(uploaded_files) == 1:
+                        equipment['photos'][photo_key] = uploaded_file
+                    else:
+                        equipment['photos'][f"{photo_key}_{i+1}"] = uploaded_file
+                st.success(f"✅ {len(uploaded_files)} photo(s) uploaded")
+        
     elif question_type == 'number':
         widget_key = f"q_{item_key}_{equip_key_prefix}"
         
@@ -445,6 +465,19 @@ def get_kitchen_summary():
                             for pk, pv in equipment.get('photos', {}).items():
                                 if pk.startswith(photo_key):
                                     equip_summary['na_photos'][pk] = pv
+                        elif answer and answer not in ['', '0']:  # Text or number responses
+                            # Add to yes_responses for display purposes
+                            equip_summary['yes_responses'].append({
+                                'item': key,
+                                'question': question_text,
+                                'answer': answer,
+                                'comment': data.get('comment', '')
+                            })
+                            # Collect photos for text/number responses
+                            photo_key = f"photo_{key}"
+                            for pk, pv in equipment.get('photos', {}).items():
+                                if pk.startswith(photo_key):
+                                    equip_summary['yes_photos'][pk] = pv
                     
                 # For backward compatibility, keep issues_found as no_responses
                 equip_summary['issues_found'] = equip_summary['no_responses']
@@ -881,7 +914,8 @@ def create_technical_report(data):
                 if equip.get('yes_responses'):
                     for yes_item in equip['yes_responses']:
                         question_text = yes_item.get('question', yes_item['item'].replace('_', ' ').title())
-                        answer_text = "YES"
+                        # Use the actual answer value (could be "Yes" or text like "GOT")
+                        answer_text = yes_item.get('answer', 'YES')
                         if yes_item['comment']:
                             answer_text += f"\n{yes_item['comment']}"
                         all_findings.append((question_text, answer_text))
@@ -890,7 +924,8 @@ def create_technical_report(data):
                 if equip.get('no_responses'):
                     for no_item in equip['no_responses']:
                         question_text = no_item.get('question', no_item['item'].replace('_', ' ').title())
-                        answer_text = "NO"
+                        # Use the actual answer value
+                        answer_text = no_item.get('answer', 'NO')
                         if no_item['comment']:
                             answer_text += f"\n{no_item['comment']}"
                         all_findings.append((question_text, answer_text))
@@ -899,7 +934,8 @@ def create_technical_report(data):
                 if equip.get('na_responses'):
                     for na_item in equip['na_responses']:
                         question_text = na_item.get('question', na_item['item'].replace('_', ' ').title())
-                        answer_text = "N/A"
+                        # Use the actual answer value
+                        answer_text = na_item.get('answer', 'N/A')
                         if na_item['comment']:
                             answer_text += f"\n{na_item['comment']}"
                         all_findings.append((question_text, answer_text))

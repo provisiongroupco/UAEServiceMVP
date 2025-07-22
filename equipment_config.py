@@ -331,7 +331,8 @@ EQUIPMENT_TYPES = {
                 "id": "monitoring_console_type",
                 "question": "What is the monitoring console type installed in the hood?",
                 "type": "text",
-                "required": True
+                "required": True,
+                "photo": True
             },
             {
                 "id": "module_count",
