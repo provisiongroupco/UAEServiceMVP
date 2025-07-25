@@ -148,11 +148,19 @@ def render_checklist_item(equipment, item, equip_key_prefix, prefix=""):
         # Initialize session state if not exists
         if widget_key not in st.session_state:
             st.session_state[widget_key] = item_data.get('answer', '')
-            
-        answer = st.text_input(
-            question,
-            key=widget_key
-        )
+        
+        # Use text_area for dimensions questions to provide more space
+        if 'dimensions' in item_key.lower() or 'sizes' in question.lower():
+            answer = st.text_area(
+                question,
+                key=widget_key,
+                height=100  # Provides a larger text box
+            )
+        else:
+            answer = st.text_input(
+                question,
+                key=widget_key
+            )
         # Update equipment object directly
         equipment['inspection_data'][item_key]['answer'] = st.session_state[widget_key]
         

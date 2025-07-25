@@ -1,0 +1,556 @@
+================================================================================
+                    COMPLETE EQUIPMENT CONDITIONALS BREAKDOWN
+================================================================================
+
+1. KVF HOOD CONDITIONALS
+================================================================================
+
+1.1 HOOD LIGHTS OPERATIONAL
+   IF answer = "Yes" → REQUIRE photo
+   IF answer = "No" → REQUIRE photo + comment
+   IF answer = "N/A" → REQUIRE comment
+
+1.2 HOOD LIGHT BALLAST
+   IF answer = "Yes" → SHOW follow-up question "Ballast Issue?"
+      IF "Ballast Issue?" = "Yes" → REQUIRE photo + comment
+      IF "Ballast Issue?" = "No" → REQUIRE photo
+      IF "Ballast Issue?" = "N/A" → REQUIRE comment
+   IF answer = "No" → No action required
+   IF answer = "N/A" → REQUIRE comment
+
+1.3 CAPTURE JET FAN WORKING
+   IF answer = "Yes" → REQUIRE photo
+   IF answer = "No" → REQUIRE photo + comment
+   IF answer = "N/A" → REQUIRE comment
+
+1.4 EXTRACT AIRFLOW ISSUE
+   IF answer = "Yes" → REQUIRE comment + SHOW follow-up "Extract Design Airflow Achieved?"
+      IF "Extract Design Airflow Achieved?" = "Yes" → No action
+      IF "Extract Design Airflow Achieved?" = "No" → REQUIRE photo + comment + SHOW "Manual Damper Fully Opened?"
+         IF "Manual Damper Fully Opened?" = "Yes" → No action
+         IF "Manual Damper Fully Opened?" = "No" → REQUIRE photo + DISPLAY "Please open the damper"
+         IF "Manual Damper Fully Opened?" = "N/A" → REQUIRE comment
+      IF "Extract Design Airflow Achieved?" = "N/A" → REQUIRE comment
+   IF answer = "No" → No action
+   IF answer = "N/A" → REQUIRE comment
+
+1.5 SUPPLY AIRFLOW ISSUE
+   IF answer = "Yes" → REQUIRE comment + SHOW follow-up "Supply Design Airflow Achieved?"
+      IF "Supply Design Airflow Achieved?" = "Yes" → No action
+      IF "Supply Design Airflow Achieved?" = "No" → REQUIRE photo + comment + SHOW "Supply Manual Damper Fully Opened?"
+         IF "Supply Manual Damper Fully Opened?" = "Yes" → No action
+         IF "Supply Manual Damper Fully Opened?" = "No" → REQUIRE photo + DISPLAY "Please open the damper"
+         IF "Supply Manual Damper Fully Opened?" = "N/A" → REQUIRE comment
+      IF "Supply Design Airflow Achieved?" = "N/A" → REQUIRE comment
+   IF answer = "No" → No action
+   IF answer = "N/A" → REQUIRE comment
+
+1.6 KSA FILTERS CONDITION
+   IF answer = "Yes" → REQUIRE photo
+   IF answer = "No" → REQUIRE photo + comment
+   IF answer = "N/A" → REQUIRE comment
+
+1.7 KSA FILTERS IN PLACE
+   IF answer = "Yes" → REQUIRE photo
+   IF answer = "No" → REQUIRE photo + comment
+   IF answer = "N/A" → REQUIRE comment
+
+1.8 PERSONAL SUPPLY AIR NOZZLES
+   IF answer = "Yes" → REQUIRE photo
+   IF answer = "No" → REQUIRE photo + comment
+   IF answer = "N/A" → REQUIRE comment
+
+1.9 OTHER ISSUES/COMMENTS
+   IF answer = "Yes" → REQUIRE comment + SHOW follow-up "Include Pictures?"
+      IF "Include Pictures?" = "Yes" → Allow photo upload
+      IF "Include Pictures?" = "No" → No action
+   IF answer = "No" → No action
+   IF answer = "N/A" → REQUIRE comment
+
+1.10 FINAL REMARKS
+   IF answer = "Yes" → REQUIRE comment
+   IF answer = "No" → No action
+
+
+2. KVI HOOD CONDITIONALS
+================================================================================
+
+2.1 HOOD LIGHTS OPERATIONAL
+   [Same as KVF 1.1]
+
+2.2 HOOD LIGHT BALLAST
+   [Same as KVF 1.2]
+
+2.3 CAPTURE JET FAN WORKING
+   [Same as KVF 1.3]
+
+2.4 EXTRACT AIRFLOW ISSUE
+   IF answer = "Yes" → REQUIRE comment + SHOW follow-up "Extract Design Airflow Achieved?"
+      IF "Extract Design Airflow Achieved?" = "Yes" → No action
+      IF "Extract Design Airflow Achieved?" = "No" → REQUIRE photo + comment
+      IF "Extract Design Airflow Achieved?" = "N/A" → REQUIRE comment
+   IF answer = "No" → No action
+   IF answer = "N/A" → REQUIRE comment
+
+2.5 KSA FILTERS CONDITION
+   [Same as KVF 1.6]
+
+2.6 KSA FILTERS IN PLACE
+   [Same as KVF 1.7]
+
+2.7 BLANK NOZZLES
+   IF answer = "Yes" → REQUIRE photo
+   IF answer = "No" → REQUIRE photo + comment
+   IF answer = "N/A" → REQUIRE comment
+
+2.8 OTHER ISSUES/COMMENTS
+   [Same as KVF 1.9]
+
+2.9 FINAL REMARKS
+   [Same as KVF 1.10]
+
+
+3. UVF HOOD CONDITIONALS
+================================================================================
+
+3.1 MONITORING CONSOLE TYPE
+   ALWAYS → REQUIRE text input + photo
+
+3.2 MODULE COUNT
+   ALWAYS → REQUIRE number input (1-20)
+   WHEN value entered → GENERATE module inspection forms for each module
+
+3.3 HOOD LIGHTS OPERATIONAL
+   [Same as KVF 1.1]
+
+3.4 HOOD LIGHT BALLAST
+   [Same as KVF 1.2]
+
+3.5 CAPTURE JET FAN WORKING
+   [Same as KVF 1.3]
+
+3.6 ALARMS REGISTERED
+   IF answer = "Yes" → SHOW follow-up "Alarm Count"
+      WHEN "Alarm Count" entered → GENERATE alarm fields
+   IF answer = "No" → REQUIRE photo
+   IF answer = "N/A" → REQUIRE comment
+
+3.7 EXTRACT AIRFLOW ISSUE
+   [Same as KVF 1.4]
+
+3.8 SUPPLY AIRFLOW ISSUE
+   [Same as KVF 1.5]
+
+3.9 KSA FILTERS CONDITION
+   [Same as KVF 1.6]
+
+3.10 KSA FILTERS IN PLACE
+   [Same as KVF 1.7]
+
+3.11 FILTER MAGNETS
+   IF answer = "Yes" → REQUIRE photo
+   IF answer = "No" → REQUIRE photo + comment
+   IF answer = "N/A" → REQUIRE comment
+
+3.12 PERSONAL SUPPLY AIR NOZZLES
+   [Same as KVF 1.8]
+
+3.13 UV POWER CABLES
+   IF answer = "Yes" → REQUIRE photo
+   IF answer = "No" → REQUIRE photo + comment
+   IF answer = "N/A" → REQUIRE comment
+
+3.14 OTHER ISSUES/COMMENTS
+   [Same as KVF 1.9]
+
+3.15 FINAL REMARKS
+   [Same as KVF 1.10]
+
+3.16 UVF MODULE CHECKLIST (FOR EACH MODULE)
+   a) UV Cassettes Photo → ALWAYS REQUIRE photo
+   b) KSA Filter Magnets Photo → ALWAYS REQUIRE photo
+   c) KSA Filter Dimensions → ALWAYS REQUIRE text input
+   d) UV Door Sensor Photo → ALWAYS REQUIRE photo
+   e) UV Controllers MU1 & VV1 Photo → ALWAYS REQUIRE photo
+   f) Pressure Tube Connection Photo → ALWAYS REQUIRE photo
+   g) UV Ballast Photo → ALWAYS REQUIRE photo
+   h) UV PCB Board Photo → ALWAYS REQUIRE photo
+   i) UV Power Cable Photo → ALWAYS REQUIRE photo
+   j) Filter Count → ALWAYS REQUIRE number input
+   
+   k) MODULE ALARM
+      IF answer = "Yes" → SHOW follow-ups:
+         - "Alarm Reason" → SELECT from [UV system, Communication, Airflow]
+         - "Alarm Fixable?"
+            IF "Yes" → REQUIRE photo
+            IF "No" → REQUIRE comment
+      IF answer = "No" → No action
+   
+   l) BROKEN UV TUBE
+      IF answer = "Yes" → REQUIRE photo + comment
+      IF answer = "No" → REQUIRE photo
+
+
+4. CMW HOOD (COLD MIST) CONDITIONALS
+================================================================================
+
+4.1 HOOD LIGHTS OPERATIONAL
+   [Same as KVF 1.1]
+
+4.2 HOOD LIGHT BALLAST
+   [Same as KVF 1.2]
+
+4.3 CAPTURE JET FAN WORKING
+   [Same as KVF 1.3]
+
+4.4 EXTRACT AIRFLOW ISSUE
+   [Same as KVF 1.4]
+
+4.5 SUPPLY AIR CONNECTED
+   IF answer = "Yes" → SHOW follow-up "Supply Design Airflow Achieved?"
+      [Same logic as KVF 1.5 supply airflow]
+   IF answer = "No" → No action
+   IF answer = "N/A" → REQUIRE comment
+
+4.6 COLD MIST NOZZLES OPERATIONAL
+   IF answer = "Yes" → REQUIRE photo
+   IF answer = "No" → REQUIRE photo + comment
+   IF answer = "N/A" → REQUIRE comment
+
+4.7 SOLENOID VALVE OPERATIONAL
+   [Same pattern as 4.6]
+
+4.8 PRESSURE SWITCH OPERATIONAL
+   [Same pattern as 4.6]
+
+4.9 COLD MIST SOLENOID COIL OPERATIONAL
+   [Same pattern as 4.6]
+
+4.10 PRESSURE ADJUSTED PER HALTON
+   [Same pattern as 4.6]
+
+4.11 HAND VALVE FULLY OPENED
+   [Same pattern as 4.6]
+
+4.12 COLD WATER AVAILABLE
+   [Same pattern as 4.6]
+
+4.13 WATER LINE CONNECTED PROPERLY
+   [Same pattern as 4.6]
+
+4.14 WATER LEAKAGE
+   IF answer = "Yes" → REQUIRE photo + comment
+   IF answer = "No" → REQUIRE photo only
+   IF answer = "N/A" → REQUIRE comment
+
+4.15 COLD MIST WITH HOT WATER WASH SYSTEM
+   IF answer = "Yes" → REQUIRE photo + comment + SHOW multiple follow-ups:
+      
+      a) Power Supply Available
+         IF "Yes" → REQUIRE photo
+         IF "No" → REQUIRE photo + comment
+         IF "N/A" → REQUIRE comment
+      
+      b) Hot Water Supply Available
+         [Same pattern as a)]
+      
+      c) Solenoid Valve for Hot Water Working
+         [Same pattern as a)]
+      
+      d) Cold Mist Nozzle Count → REQUIRE number input
+      
+      e) Cold Mist Nozzles Operational
+         [Same pattern as a)]
+      
+      f) Pressure Switch Operational
+         IF "Yes" → REQUIRE photo + SHOW "Working on 75PA?"
+            IF "Working on 75PA?" = "Yes" → REQUIRE photo
+            IF "Working on 75PA?" = "No" → REQUIRE comment
+         IF "No" → REQUIRE photo + comment
+         IF "N/A" → REQUIRE comment
+      
+      g) Water Supply for Hot Water Wash
+         [Same pattern as a)]
+      
+      h) Hot Water Nozzles Working
+         [Same pattern as a)]
+      
+      i) Detergent Chemical Available
+         IF "Yes" → REQUIRE photo + SHOW "Detergent Tank Full?"
+            IF "Detergent Tank Full?" = "Yes" → REQUIRE photo
+            IF "Detergent Tank Full?" = "No" → REQUIRE photo
+            IF "Detergent Tank Full?" = "N/A" → REQUIRE comment
+         IF "No" → REQUIRE photo + comment
+         IF "N/A" → REQUIRE comment
+   
+   IF answer = "No" → No action
+   IF answer = "N/A" → REQUIRE comment
+
+4.16 KSA FILTERS CONDITION
+   [Same as KVF 1.6]
+
+4.17 KSA FILTERS IN PLACE
+   [Same as KVF 1.7]
+
+4.18 PERSONAL SUPPLY AIR NOZZLES
+   [Same as KVF 1.8]
+
+4.19 OTHER ISSUES/COMMENTS
+   [Same as KVF 1.9]
+
+4.20 FINAL REMARKS
+   [Same as KVF 1.10]
+
+
+5. ECOLOGY UNIT CONDITIONALS
+================================================================================
+
+5.1 CONTROL PANEL AVAILABLE
+   IF answer = "Yes" → SHOW follow-up "Touch Screen Operational?"
+      IF "Touch Screen Operational?" = "Yes" → REQUIRE photo
+      IF "Touch Screen Operational?" = "No" → REQUIRE photo + comment
+   IF answer = "No" → REQUIRE comment
+
+5.2 VFD RUNNING
+   IF answer = "Yes" → REQUIRE photo + comment
+   IF answer = "No" → REQUIRE photo
+
+5.3 VFD INTERNAL COMPONENTS
+   IF answer = "Yes" → REQUIRE photo
+   IF answer = "No" → REQUIRE photo + comment
+
+5.4 ESP SECTION AVAILABLE
+   IF answer = "Yes" → SHOW multiple follow-ups:
+      
+      a) ESP Working
+         IF "Yes" → REQUIRE photo
+         IF "No" → REQUIRE photo + comment
+      
+      b) HVPS Working
+         IF "Yes" → REQUIRE photo
+         IF "No" → REQUIRE photo + comment
+      
+      c) ESP with Autowash
+         IF "Yes" → REQUIRE photo + SHOW follow-ups:
+            - "Autowash includes detergent?"
+               IF "Yes" → REQUIRE photo
+               IF "No" → No action
+            - "Water supply available?"
+               IF "Yes" → No action
+               IF "No" → REQUIRE photo
+         IF "No" → REQUIRE photo + comment
+   
+   IF answer = "No" → No action
+
+5.5 PRE FILTERS SECTION
+   IF answer = "Yes" → SHOW follow-ups:
+      a) Filter Type → SELECT from [Washable, Non-washable, Both, Other] + REQUIRE photo
+      b) Quantity → REQUIRE number input
+      c) Dimensions → REQUIRE text input
+      d) Issue?
+         IF "Yes" → REQUIRE photo + comment
+         IF "No" → REQUIRE photo
+   IF answer = "No" → No action
+
+5.6 BAG FILTERS SECTION
+   IF answer = "Yes" → SHOW follow-ups:
+      a) Filter Type → SELECT from [ELF, Normal] + REQUIRE photo
+      b) Quantity → REQUIRE number input
+      c) Dimensions → REQUIRE text input
+      d) Issue?
+         IF "Yes" → REQUIRE photo + comment
+         IF "No" → REQUIRE photo
+   IF answer = "No" → No action
+
+5.7 HEPA FILTER SECTION
+   IF answer = "Yes" → SHOW follow-ups:
+      a) Filter Type → SELECT from [V-TYPE, Normal, Other] + REQUIRE photo
+      b) Quantity → REQUIRE number input
+      c) Dimensions → REQUIRE text input
+      d) Issue?
+         IF "Yes" → REQUIRE photo + comment
+         IF "No" → REQUIRE photo
+   IF answer = "No" → No action
+
+5.8 CARBON FILTER SECTION
+   IF answer = "Yes" → SHOW follow-up:
+      Filter Type → SELECT from [V-TYPE, Panel type, Other]
+   IF answer = "No" → No action
+
+5.9 UV SECTION
+   IF answer = "Yes" → SHOW follow-ups:
+      a) UV Tubes Issue?
+         IF "Yes" → REQUIRE photo + comment
+         IF "No" → REQUIRE photo
+      b) UV Ballast Issue?
+         IF "Yes" → REQUIRE photo + comment
+         IF "No" → REQUIRE photo
+      c) UV Power Cables Issue?
+         IF "Yes" → REQUIRE photo + comment
+         IF "No" → REQUIRE photo
+   IF answer = "No" → No action
+
+5.10 OTHER COMMENTS
+   IF answer = "Yes" → REQUIRE comment + SHOW "Add pics?"
+      IF "Add pics?" = "Yes" → Allow photo upload
+   IF answer = "No" → No action
+
+
+6. MOBICHEF CONDITIONALS
+================================================================================
+
+6.1 HOOD LIGHTS WORKING
+   IF answer = "Yes" → REQUIRE photo
+   IF answer = "No" → REQUIRE photo + comment
+   IF answer = "N/A" → REQUIRE comment
+
+6.2 KSA FILTERS IN PLACE
+   [Same pattern as 6.1]
+
+6.3 MESH FILTERS IN PLACE
+   [Same pattern as 6.1]
+
+6.4 PRE FILTERS IN PLACE
+   [Same pattern as 6.1]
+
+6.5 ESP WORKING
+   [Same pattern as 6.1]
+
+6.6 CARBON FILTERS IN PLACE
+   [Same pattern as 6.1]
+
+6.7 CAPTURE JET FANS WORKING
+   [Same pattern as 6.1]
+
+6.8 TOUCH SCREEN OPERATIONAL
+   [Same pattern as 6.1]
+
+6.9 OTHER ISSUES
+   IF answer = "Yes" → REQUIRE comment + SHOW "Include Pictures?"
+      IF "Include Pictures?" = "Yes" → Allow photo upload
+      IF "Include Pictures?" = "No" → No action
+   IF answer = "No" → No action
+   IF answer = "N/A" → REQUIRE comment
+
+6.10 FINAL REMARKS
+   IF answer = "Yes" → REQUIRE comment
+   IF answer = "No" → No action
+
+
+7. MARVEL SYSTEM CONDITIONALS (When "With Marvel" is checked)
+================================================================================
+
+7.1 POWER SUPPLY AVAILABLE
+   IF answer = "Yes" → REQUIRE photo
+   IF answer = "No" → REQUIRE photo + comment
+   IF answer = "N/A" → REQUIRE comment
+
+7.2 TOUCH SCREEN OPERATING
+   [Same pattern as 7.1]
+
+7.3 INTERNAL COMPONENTS OPERATIONAL
+   IF answer = "Yes" → REQUIRE photo
+   IF answer = "No" → REQUIRE comment only (no photo)
+   IF answer = "N/A" → REQUIRE comment
+
+7.4 (0-10V) SIGNALS WORKING
+   [Same pattern as 7.3]
+
+7.5 NTC SENSORS WORKING
+   [Same pattern as 7.1]
+
+7.6 IR SENSORS WORKING
+   [Same pattern as 7.1]
+
+7.7 ABD DAMPERS OPERATING
+   [Same pattern as 7.1]
+
+7.8 ABD ACTUATORS WORKING
+   [Same pattern as 7.1]
+
+7.9 COMMENTS ABOUT MARVEL
+   IF answer = "Yes" → REQUIRE comment + SHOW "Include pictures?"
+      IF "Include pictures?" = "Yes" → Allow photo upload
+      IF "Include pictures?" = "No" → No action
+   IF answer = "No" → No action
+
+7.10 FINAL REMARKS ON MARVEL
+   IF answer = "Yes" → REQUIRE comment
+   IF answer = "No" → No action
+
+
+8. PPM CHECKLIST CONDITIONALS (When Visit Type = "PPM (AMC)")
+================================================================================
+
+8.1 BASE PPM ITEMS (All Equipment)
+   a) Hood Light Cleaned → Yes/No selection
+   b) Capture Jet Fan Cleaned → Yes/No selection
+   c) Hood Plenum Cleaned → Yes/No selection
+   d) Before/After Photos Count → Number input
+      WHEN number > 0 → GENERATE photo upload pairs for before/after
+   e) PPM Comments
+      IF "Yes" → REQUIRE photo + comment + SHOW "Add more pics?"
+         IF "Add more pics?" = "Yes" → Allow additional photos
+      IF "No" → No action
+   f) PPM Remarks
+      IF "Yes" → REQUIRE comment
+      IF "No" → No action
+
+8.2 UVF-SPECIFIC PPM ITEMS
+   IF equipment_type = "UVF" AND has_modules:
+      ADD: UV Cassettes Cleaned → Yes/No
+      ADD: UV Lamps Cleaned → Yes/No
+      ADD: UV Door Cleaned → Yes/No
+
+8.3 CMW-SPECIFIC PPM ITEMS
+   IF equipment_type = "CMW" AND has_hot_water_wash:
+      ADD: Cold Water Nozzles Cleaned → Yes/No
+      ADD: Hot Water Nozzles Cleaned → Yes/No
+
+8.4 ECOLOGY-SPECIFIC PPM ITEMS
+   IF equipment_type = "ECOLOGY":
+      ADD extensive cleaning checklist:
+      - PRE Filters Cleaned → Yes/No
+      - BAG Filters Cleaned → Yes/No
+      - HEPA Filters Cleaned → Yes/No
+      - Carbon Filters Cleaned → Yes/No
+      - ESP Cells Cleaned → Yes/No
+      - UV Section Cleaned → Yes/No
+      - Unit Cleaned → Yes/No
+      - VFD Cleaned → Yes/No
+      - Fan Cleaned → Yes/No
+      - Motor Cleaned → Yes/No
+
+
+9. GLOBAL VALIDATION RULES
+================================================================================
+
+9.1 REQUIRED FIELDS FOR ALL EQUIPMENT
+   - Equipment Serial Number → ALWAYS REQUIRED
+   - Equipment Location → ALWAYS REQUIRED
+
+9.2 EQUIPMENT-SPECIFIC REQUIRED FIELDS
+   - UVF: Monitoring Console Type → REQUIRED
+   - UVF: Module Count → REQUIRED (generates module forms)
+
+9.3 PHOTO VALIDATION RULES
+   - When photo is required and answer triggers it:
+     IF photo not uploaded → BLOCK form submission
+     SHOW error: "Please upload required photos"
+   
+   - Photo size limits:
+     MAX individual photo size: 10MB
+     Automatic compression applied if needed
+
+9.4 CONDITIONAL FIELD GENERATION
+   - UVF Modules: Number entered → Generate that many module forms
+   - UVF Alarms: Number entered → Generate that many alarm fields
+   - PPM Photo Count: Number entered → Generate that many before/after pairs
+
+9.5 ACTION TRIGGERS
+   - Manual Damper = "No" → Display action message: "Please open the damper"
+   - Any critical failure → Highlight in red in final report
+
+================================================================================
+                            END OF EQUIPMENT CONDITIONALS
+================================================================================

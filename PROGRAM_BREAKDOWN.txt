@@ -1,0 +1,344 @@
+================================================================================
+                    SERVICE REPORTS SYSTEM - PROGRAM BREAKDOWN
+================================================================================
+
+1. PROGRAM OVERVIEW
+--------------------------------------------------------------------------------
+Name: Service Reports Dashboard
+Type: Web Application (Streamlit-based)
+Purpose: Generate professional service reports for kitchen equipment maintenance
+Main File: app.py
+Version: MVP (Minimum Viable Product)
+
+
+2. DATA COLLECTION
+--------------------------------------------------------------------------------
+
+2.1 GENERAL INFORMATION COLLECTED:
+- Visit Type: ["Service Call", "PPM (AMC)"]
+- Client Name: Text input
+- Site/Store Name: Text input
+- Branch/Store Number: Text input
+- Report Number: Text input
+- Date of Visit: Date picker
+- Time of Arrival: Time picker
+- Time of Departure: Time picker
+- P.O. Number: Text input
+- General Comments: Text area
+
+2.2 TECHNICAL REPORT SPECIFIC DATA:
+- Number of Kitchens: Number input (1-10)
+- Kitchen Names: Text inputs for each kitchen
+- Equipment per Kitchen:
+  - Equipment ID: Text input
+  - Equipment Type: ["KVF", "MARVEL", "UVF", "WDF", "Condensate Hood", "POLLUSTOP"]
+  - Location: Text input
+  - Marvel System: Yes/No checkbox (for equipment supporting Marvel)
+  - Equipment-specific inspection checklist answers
+  - Photos for equipment issues
+  - Comments for checklist items
+
+2.3 GENERAL SERVICE REPORT SPECIFIC DATA:
+- Work Performed Items:
+  - Description of Work: Text area
+  - Time Taken: Number input (hours)
+- Spare Parts Used:
+  - Description: Text input
+  - Quantity: Number input
+  - Part Number: Text input
+
+2.4 SIGNATURE DATA:
+- Engineer Signature: Canvas drawing
+- Engineer Name: Text input
+- Customer Signature: Canvas drawing
+- Customer Name: Text input
+
+
+3. MAIN CONDITIONALS AND LOGIC FLOW
+--------------------------------------------------------------------------------
+
+3.1 REPORT TYPE SELECTION:
+```python
+if report_type == "Technical Report":
+    # Show kitchen and equipment inspection workflow
+    # Enable PPM checklist for AMC visits
+    # Show equipment-specific questions
+else:  # General Service Report
+    # Show work performed section
+    # Show spare parts section
+    # Skip equipment inspection
+```
+
+3.2 VISIT TYPE CONDITIONAL:
+```python
+if visit_type == "PPM (AMC)":
+    # Show PPM checklist section
+    # Enable preventive maintenance items
+else:  # Service Call
+    # Hide PPM checklist
+    # Focus on issue resolution
+```
+
+3.3 EQUIPMENT TYPE CONDITIONALS:
+```python
+# Marvel System Availability
+if equipment_type in ["KVF", "UVF", "POLLUSTOP"]:
+    # Show "With Marvel System" checkbox
+    
+# UVF Module Handling
+if equipment_type == "UVF":
+    # Show number of modules input (1-20)
+    # Create module-specific questions for each module
+    
+# Cleanliness Photo Requirements
+if equipment_type == "KVF" and question == "cleanliness":
+    # Require photo upload
+    # Show photo status indicators
+```
+
+3.4 DYNAMIC QUESTION CONDITIONALS:
+```python
+# Follow-up Questions Based on Answers
+if parent_answer == "No":
+    # Show follow-up questions
+    # Example: "Is the unit operational?" → No → "What is the issue?"
+    
+# Photo Requirements
+if requires_photo and answer in ["No", specific_conditions]:
+    # Mandate photo upload
+    # Block form submission without photo
+```
+
+3.5 FORM VALIDATION CONDITIONALS:
+```python
+# Kitchen Equipment Validation
+if equipment_count == 0:
+    # Show error: "Add at least one equipment"
+    
+# Signature Validation
+if not engineer_signature or not customer_signature:
+    # Show error: "Both signatures required"
+    
+# Required Fields
+if not all([client_name, site_name, report_number, date_of_visit]):
+    # Show error: "Fill all required fields"
+```
+
+
+4. EQUIPMENT-SPECIFIC CHECKLISTS
+--------------------------------------------------------------------------------
+
+4.1 KVF CHECKLIST ITEMS:
+- Casing, covers, enclosures and handles
+- Fan impeller and motor (cleanliness) [PHOTO REQUIRED]
+- Grease filters/baffles visual inspection
+- Control functions check
+- UV functioning/sensors (if Marvel)
+- Motor current & insulation test
+- Bearing condition
+- Dampers/linkages condition
+- Alarm & interlock checks
+
+4.2 MARVEL CHECKLIST:
+- UV light intensity measurement
+- UV lamps condition
+- Safety interlock test
+- Sensor calibration check
+- Control panel functionality
+
+4.3 UVF CHECKLIST (Module-Based):
+- For each module (1-20):
+  - Fan operation status
+  - Current consumption
+  - UV lamp status
+  - Filter condition
+  - Module-specific issues
+
+4.4 WDF CHECKLIST:
+- Water flow rate measurement
+- Nozzle condition inspection
+- Pump operation check
+- Filter cleaning status
+- Control valve operation
+
+4.5 CONDENSATE HOOD CHECKLIST:
+- Drain line inspection
+- Hood alignment check
+- Seal integrity verification
+- Support structure condition
+
+4.6 POLLUSTOP CHECKLIST:
+- ESP cell condition
+- High voltage power supply test
+- Pre-filter inspection
+- Ionizer wire condition
+- Collection plate cleaning
+
+
+5. REPORT GENERATION FLOW
+--------------------------------------------------------------------------------
+
+5.1 DOCUMENT STRUCTURE:
+1. Header with logo and company information
+2. General visit information table
+3. For Technical Reports:
+   - Equipment inspection summary
+   - Detailed checklist results per equipment
+   - Photos section with captions
+   - PPM checklist (if applicable)
+4. For General Service Reports:
+   - Work performed details
+   - Spare parts used table
+5. Comments section
+6. Signature block
+
+5.2 DOCUMENT FORMATTING:
+- Professional styling with blue headers (#1e3d59)
+- Structured tables for data presentation
+- Embedded photos with automatic resizing
+- Page breaks between major sections
+- Consistent font (Calibri) and sizing
+
+
+6. DATA PERSISTENCE AND SHARING
+--------------------------------------------------------------------------------
+
+6.1 SESSION STATE MANAGEMENT:
+- All form data stored in st.session_state
+- Data persists during user session
+- Clears on browser refresh (unless shared link)
+
+6.2 SHAREABLE LINKS:
+- Form data encoded to base64
+- Compressed using zlib
+- Appended to URL as query parameter
+- Automatic form population from shared links
+
+6.3 DATA STRUCTURE:
+```python
+encoded_data = {
+    'report_data': {
+        'client_name': str,
+        'site_name': str,
+        'report_number': str,
+        'date_of_visit': date,
+        'time_of_arrival': time,
+        'time_of_departure': time,
+        'po_number': str,
+        'comments': str,
+        'visit_type': str
+    },
+    'kitchens': [
+        {
+            'name': str,
+            'equipment': [
+                {
+                    'id': str,
+                    'type': str,
+                    'location': str,
+                    'with_marvel': bool,
+                    'inspection_data': dict,
+                    'photos': dict
+                }
+            ]
+        }
+    ],
+    'work_performed': [...],
+    'spare_parts': [...],
+    'signatures': {
+        'engineer': base64_image,
+        'engineer_name': str,
+        'customer': base64_image,
+        'customer_name': str
+    }
+}
+```
+
+
+7. ERROR HANDLING AND VALIDATION
+--------------------------------------------------------------------------------
+
+7.1 INPUT VALIDATION:
+- Required field checking before submission
+- Equipment ID uniqueness validation
+- Date/time logical checks (departure after arrival)
+- Photo upload size limits
+- Signature canvas validation
+
+7.2 ERROR MESSAGES:
+- "Please fill in all required fields"
+- "Please add at least one equipment item"
+- "Both signatures are required"
+- "Please upload required photos"
+- "Equipment ID must be unique"
+
+7.3 USER FEEDBACK:
+- Success messages for actions
+- Progress indicators during generation
+- Clear error descriptions
+- Confirmation dialogs for deletions
+
+
+8. TECHNICAL SPECIFICATIONS
+--------------------------------------------------------------------------------
+
+8.1 DEPENDENCIES:
+- streamlit (Web framework)
+- python-docx (Document generation)
+- streamlit-drawable-canvas (Signature capture)
+- Pillow (Image processing)
+- pandas (Data manipulation)
+- plotly (Optional: data visualization)
+
+8.2 PERFORMANCE CONSIDERATIONS:
+- Session state size limits
+- Photo compression for sharing
+- Document generation timeout handling
+- Browser memory management
+
+8.3 BROWSER COMPATIBILITY:
+- Chrome (Recommended)
+- Firefox
+- Safari
+- Edge
+- Mobile browsers (limited functionality)
+
+
+9. FUTURE ENHANCEMENTS (DOCUMENTED)
+--------------------------------------------------------------------------------
+
+9.1 DATABASE INTEGRATION:
+- PostgreSQL for data persistence
+- User authentication system
+- Historical report access
+- Analytics dashboard
+
+9.2 ADDITIONAL FEATURES:
+- Email integration
+- PDF generation option
+- Multi-language support
+- Offline capability
+- Mobile app version
+
+9.3 REPORTING ENHANCEMENTS:
+- Custom report templates
+- Advanced analytics
+- Automated scheduling
+- Integration with ERP systems
+
+
+10. FINAL REMARKS
+--------------------------------------------------------------------------------
+
+This MVP demonstrates a functional service reporting system that:
+- Eliminates paper-based processes
+- Standardizes report format
+- Ensures data completeness through validation
+- Provides professional documentation
+- Enables easy sharing and collaboration
+
+The system is designed for scalability and can be enhanced with additional features based on user feedback and business requirements.
+
+================================================================================
+                                END OF BREAKDOWN
+================================================================================

@@ -1,0 +1,261 @@
+================================================================================
+                    ACTIVE INPUTS AND CONDITIONALS IN CURRENT CODE
+================================================================================
+
+1. GENERAL INFORMATION INPUTS (ALL REPORTS)
+================================================================================
+- Visit Type: Dropdown ["Service Call", "AMC (Contract)"]
+- Client Name: Text input (required)
+- Site/Store Name: Text input (required)
+- Branch/Store Number: Text input (optional)
+- Report Number: Text input (required)
+- Date of Visit: Date picker (required)
+- Time of Arrival: Time picker (required)
+- Time of Departure: Time picker (required)
+- P.O. Number: Text input (optional)
+- General Comments: Text area (optional)
+
+
+2. TECHNICAL REPORT SPECIFIC INPUTS
+================================================================================
+- Number of Kitchens: Number input (1-10)
+- Kitchen Names: Text input for each kitchen
+- Equipment Count per Kitchen: Dynamic add/remove buttons
+
+
+3. EQUIPMENT INPUTS (FOR EACH EQUIPMENT)
+================================================================================
+- Equipment ID: Text input (required)
+- Equipment Type: Dropdown with ALL types:
+  * KVF Hood
+  * UVF
+  * CMW
+  * Exhaust Fan
+  * Fresh Air Fan
+  * Makeup Air Unit
+  * ERW (Energy Recovery Wheel)
+  * AC Unit
+  * ECOLOGY
+  * CJ
+  * Marvel System
+- Equipment Location: Text input (required)
+- With Marvel System: Checkbox (shown for all equipment types)
+
+
+4. ACTIVE CONDITIONALS BY EQUIPMENT TYPE
+================================================================================
+
+4.1 KVF HOOD ACTIVE CHECKLIST
+-----------------------------------
+All items from equipment_config.py are rendered:
+1. Hood Lights Operational (yes_no_na)
+   - "Yes" → Photo required
+   - "No" → Photo + Comment required
+   - "N/A" → Comment required
+
+2. Hood Light Ballast (yes_no_na)
+   - "Yes" → Shows "Ballast Issue?" follow-up
+   - "No" → No action
+   - "N/A" → Comment required
+
+3. Capture Jet Fan Working (yes_no_na)
+   - "Yes" → Photo required
+   - "No" → Photo + Comment required
+   - "N/A" → Comment required
+
+4. Filters condition (yes_no)
+   - "Yes" → Photo required
+   - "No" → Photo required
+
+5. Filters in place (yes_no)
+   - "Yes" → Photo required
+   - "No" → Photo required
+
+6. Other Issues/Comments (yes_no)
+   - "Yes" → Comment required + "Include Pictures?" follow-up
+
+7. Final Remarks (yes_no)
+   - "Yes" → Comment required
+
+
+4.2 UVF ACTIVE CHECKLIST
+-----------------------------------
+Special inputs:
+- Module Count: Number input (1-20)
+  WHEN > 0 → Shows module inspection for each module
+
+Module Inspection (per module):
+1. UV Cassettes Photo: Photo upload required
+2. KSA Filters Status: yes_no
+3. KSA Filter Photo: Photo upload based on answer
+4. UV Door Sensor Status: yes_no
+5. UV Door Sensor Photo: Photo upload based on answer
+6. UV Controllers Photo: Photo upload required
+7. Pressure Tube Status: yes_no
+8. Pressure Tube Photo: Photo upload based on answer
+9. UV Ballast Status: yes_no_na + follow-ups
+10. Module Alarm: yes_no
+    - "Yes" → Shows "Alarm Reason" select + "Alarm Fixable?" follow-up
+11. Broken UV Tube: yes_no
+    - "Yes" → Photo + Comment required
+    - "No" → Photo required
+
+
+4.3 CMW ACTIVE CHECKLIST
+-----------------------------------
+Special conditional:
+- Cold Mist System with Hot Water Wash (yes_no_na)
+  - "Yes" → Shows extensive follow-up questions:
+    * Power Supply Available
+    * Pressure Switch Operational
+      - "Yes" → "Working on 75PA?" follow-up
+    * Detergent Chemical Available
+      - "Yes" → "Detergent Tank Full?" follow-up
+    * Other hot water wash questions
+
+
+4.4 ECOLOGY ACTIVE CHECKLIST
+-----------------------------------
+Different format (yes_no instead of yes_no_na):
+1. ESP Section Available (yes_no)
+   - "Yes" → Multiple follow-ups:
+     * ESP Working
+     * HVPS Working
+     * ESP with Autowash
+       - "Yes" → Autowash detergent + Water supply follow-ups
+
+2. PRE Filters Section (yes_no)
+   - "Yes" → Filter Type select + Quantity + Issue check
+
+3. BAG Filters Section (yes_no)
+   - "Yes" → Filter Type select + Quantity + Issue check
+
+4. UV Section (yes_no)
+   - "Yes" → UV components checklist
+
+
+4.5 OTHER EQUIPMENT TYPES
+-----------------------------------
+All other equipment types (Exhaust Fan, Fresh Air Fan, etc.) have their 
+checklists from equipment_config.py rendered with the same conditional logic.
+
+
+5. MARVEL SYSTEM CONDITIONAL (ALL EQUIPMENT)
+================================================================================
+WHEN "With Marvel System" checkbox is checked:
+Shows Marvel-specific checklist:
+1. Power Supply Available (yes_no_na)
+2. Touch Screen Operating (yes_no_na)
+3. Internal Components Operational (yes_no_na)
+4. (0-10V) Signals Working (yes_no_na)
+5. NTC Sensors Working (yes_no_na)
+6. IR Sensors Working (yes_no_na)
+7. ABD Dampers Operating (yes_no_na)
+8. ABD Actuators Working (yes_no_na)
+9. Comments about MARVEL (yes_no)
+   - "Yes" → Comment + "Include pictures?" follow-up
+10. Final Remarks on MARVEL (yes_no)
+
+
+6. PPM CHECKLIST CONDITIONAL
+================================================================================
+WHEN Visit Type = "AMC (Contract)":
+Shows PPM checklist for ALL equipment:
+
+Base PPM Items:
+1. Hood Light Cleaned (yes_no)
+2. Capture Jet Fan Cleaned (yes_no)
+3. Hood Plenum Cleaned (yes_no)
+4. Before/After Photos Count (number)
+   - WHEN > 0 → Generates photo upload pairs
+5. PPM Comments (yes_no)
+   - "Yes" → Photo + Comment + "Add more pics?" follow-up
+6. PPM Remarks (yes_no)
+   - "Yes" → Comment required
+
+Equipment-Specific PPM Additions:
+- UVF with modules → Adds UV cleaning items
+- CMW with hot water wash → Adds nozzle cleaning items
+- ECOLOGY → Adds extensive cleaning checklist
+
+
+7. GENERAL SERVICE REPORT INPUTS
+================================================================================
+- Work Performed Items (dynamic add/remove):
+  * Description of Work: Text area
+  * Time Taken: Number input (hours)
+- Spare Parts Used (dynamic add/remove):
+  * Description: Text input
+  * Quantity: Number input
+  * Part Number: Text input
+
+
+8. SIGNATURE INPUTS (ALL REPORTS)
+================================================================================
+- Engineer Signature: Canvas drawing (required)
+- Engineer Name: Text input (required)
+- Customer Signature: Canvas drawing (required)
+- Customer Name: Text input (required)
+
+
+9. PHOTO UPLOAD CONDITIONALS
+================================================================================
+Photos are required when:
+1. Checklist item has photo requirement in conditions
+2. Specific answers trigger photo requirements:
+   - "No" answers often require photos
+   - "Yes" answers for certain items require photos
+3. PPM before/after photos based on count
+4. Any question of type "photo"
+
+Photo upload includes:
+- File picker (accepts image files)
+- Camera capture option on mobile
+- Multiple photo support per question
+- Automatic compression for sharing
+
+
+10. VALIDATION RULES ACTUALLY ENFORCED
+================================================================================
+1. Required fields must be filled:
+   - Client name, site name, report number, date, times
+   - Equipment ID and location
+   - Signatures and names
+
+2. Photo requirements:
+   - Cannot submit without required photos
+   - Shows "⚠️ Photo required" indicators
+
+3. Comment requirements:
+   - Must provide comments when required by conditions
+
+4. Equipment validation:
+   - At least one equipment required for Technical Report
+   - Unique equipment IDs (not enforced in current code)
+
+
+11. DATA STORAGE STRUCTURE (SESSION STATE)
+================================================================================
+All data stored in st.session_state:
+- report_data: General information
+- kitchen_list: List of kitchen names
+- equipment_list: Equipment for each kitchen with:
+  * Basic info (id, type, location, with_marvel)
+  * inspection_data: Answers and comments
+  * photos: Uploaded files
+- work_performed_list: For general service reports
+- spare_parts: Parts used
+- Signature data as base64 images
+
+
+12. SHAREABLE LINK FUNCTIONALITY
+================================================================================
+Data can be encoded to URL for sharing:
+- Compresses all form data
+- Encodes to base64
+- Creates shareable URL
+- Auto-populates form when accessed
+
+================================================================================
+                    END OF ACTIVE INPUTS AND CONDITIONALS
+================================================================================
