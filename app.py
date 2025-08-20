@@ -92,6 +92,86 @@ if 'kitchen_list' not in st.session_state:
 if 'form_data' not in st.session_state:
     st.session_state.form_data = {}
 
+# K-Factor lookup tables based on PDF documentation
+def get_extract_k_factor(num_filters, hood_type, with_uv=False):
+    """Get K-Factor for extract air based on number of KSA filters and hood type"""
+    # K-Factor tables in m³/h
+    if with_uv:
+        # UVF/UVI hoods with UV
+        uv_k_factors = {
+            1: 53.82,
+            2: 107.64,
+            3: 161.46,
+            4: 215.28,
+            5: 269.1,
+            6: 322.92
+        }
+        return uv_k_factors.get(num_filters, 0)
+    else:
+        # KVF/KVI standard hoods without UV
+        standard_k_factors = {
+            1: 67.21,
+            2: 134.46,
+            3: 201.67,
+            4: 268.88,
+            5: 336.09,
+            6: 403.30
+        }
+        return standard_k_factors.get(num_filters, 0)
+
+def get_supply_k_factor(hood_length):
+    """Get K-Factor for supply air based on hood length (H-555 model)"""
+    # K-Factor table for supply air (hood length in meters)
+    # Linear interpolation for values between table entries
+    supply_k_table = [
+        (1.0, 121.7),
+        (1.1, 133.9),
+        (1.2, 146.1),
+        (1.3, 158.2),
+        (1.4, 170.4),
+        (1.5, 182.6),
+        (1.6, 194.8),
+        (1.7, 207.0),
+        (1.8, 219.1),
+        (1.9, 231.3),
+        (2.0, 243.3),
+        (2.1, 255.5),
+        (2.2, 267.7),
+        (2.3, 279.9),
+        (2.4, 292.0),
+        (2.5, 304.2),
+        (2.6, 316.4),
+        (2.7, 328.6),
+        (2.8, 340.8),
+        (2.9, 352.9),
+        (3.0, 365.1),
+        (3.1, 377.3),
+        (3.2, 389.5),
+        (3.3, 401.7),
+        (3.4, 413.8),
+        (3.5, 426.0),
+        (3.6, 438.2),
+        (3.7, 450.4),
+        (3.8, 462.6),
+        (3.9, 474.7),
+        (4.0, 486.9)
+    ]
+    
+    # Find the appropriate K-factor
+    if hood_length <= 1.0:
+        return 121.7
+    elif hood_length >= 4.0:
+        return 486.9
+    else:
+        # Linear interpolation between values
+        for i in range(len(supply_k_table) - 1):
+            if supply_k_table[i][0] <= hood_length <= supply_k_table[i+1][0]:
+                x1, y1 = supply_k_table[i]
+                x2, y2 = supply_k_table[i+1]
+                # Linear interpolation
+                k_factor = y1 + (y2 - y1) * (hood_length - x1) / (x2 - x1)
+                return round(k_factor, 1)
+    return 0
 
 def render_checklist_item(equipment, item, equip_key_prefix, prefix=""):
     """Recursively render a checklist item with all its conditional logic"""
@@ -515,7 +595,6 @@ def collect_form_data():
                 'spare_parts': st.session_state.get('spare_parts', []),
                 'recommendations': st.session_state.get('recommendations', ''),
                 'technician_name': st.session_state.get('technician_name', ''),
-                'technician_id': st.session_state.get('technician_id', ''),
                 'service_date': st.session_state.get('service_date', datetime.now()).isoformat() if st.session_state.get('service_date') else None,
                 'report_type': st.session_state.get('report_type', 'Technical Report'),
                 'work_performed_list': st.session_state.get('work_performed_list', [])
@@ -1652,9 +1731,505 @@ def create_general_service_report(data):
     
     return doc_bytes
 
+def format_tc_table(table, is_header=False):
+    """Format Testing & Commissioning table with blue header style and reduced row height"""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    
+    # Set table borders
+    tbl = table._tbl
+    tblPr = tbl.tblPr
+    
+    # Add table borders
+    tblBorders = OxmlElement('w:tblBorders')
+    for border_name in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
+        border = OxmlElement(f'w:{border_name}')
+        border.set(qn('w:val'), 'single')
+        border.set(qn('w:sz'), '4')
+        border.set(qn('w:space'), '0')
+        border.set(qn('w:color'), '000000')
+        tblBorders.append(border)
+    tblPr.append(tblBorders)
+    
+    # Format cells and set row heights
+    for row_idx, row in enumerate(table.rows):
+        # Set row height
+        tr = row._tr
+        trPr = tr.get_or_add_trPr()
+        trHeight = OxmlElement('w:trHeight')
+        trHeight.set(qn('w:val'), '280')  # Further reduced height in twips (280 = ~0.19 inches)
+        trHeight.set(qn('w:hRule'), 'atLeast')
+        trPr.append(trHeight)
+        
+        for cell in row.cells:
+            # Set minimal cell margins
+            set_cell_margins(cell, top=0.02, bottom=0.02, left=0.08, right=0.08)
+            
+            # Add vertical alignment (middle)
+            tcPr = cell._tc.get_or_add_tcPr()
+            vAlign = OxmlElement('w:vAlign')
+            vAlign.set(qn('w:val'), 'center')
+            tcPr.append(vAlign)
+            
+            # Style the cell based on position
+            if is_header and row_idx == 0:
+                # Blue header background
+                shading = OxmlElement('w:shd')
+                shading.set(qn('w:fill'), '1F4788')  # Blue color
+                tcPr.append(shading)
+                
+                # White bold text for header
+                for paragraph in cell.paragraphs:
+                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    # Reduce paragraph spacing
+                    paragraph.paragraph_format.space_before = Pt(0)
+                    paragraph.paragraph_format.space_after = Pt(0)
+                    paragraph.paragraph_format.line_spacing = 1.0
+                    for run in paragraph.runs:
+                        run.font.bold = True
+                        run.font.color.rgb = RGBColor(255, 255, 255)
+                        run.font.size = Pt(10)
+                        run.font.name = 'Arial'
+            else:
+                # Regular cells - center all text horizontally
+                for paragraph in cell.paragraphs:
+                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    # Reduce paragraph spacing
+                    paragraph.paragraph_format.space_before = Pt(0)
+                    paragraph.paragraph_format.space_after = Pt(0)
+                    paragraph.paragraph_format.line_spacing = 1.0
+                    for run in paragraph.runs:
+                        run.font.size = Pt(9)
+                        run.font.name = 'Arial'
+
+def create_testing_commissioning_report(data):
+    """Generate a Testing and Commissioning Report Word document"""
+    import math
+    
+    # Use template if available, otherwise create new document
+    template_path = "Templates/Report Letter Head.docx"
+    
+    try:
+        if os.path.exists(template_path):
+            doc = Document(template_path)
+        else:
+            doc = Document()
+            sections = doc.sections
+            for section in sections:
+                section.top_margin = Inches(0.75)
+                section.bottom_margin = Inches(0.75)
+                section.left_margin = Inches(0.75)
+                section.right_margin = Inches(0.75)
+                section.header_distance = Inches(0.5)
+                section.footer_distance = Inches(0.5)
+    except Exception as e:
+        st.warning(f"Could not load template: {str(e)}. Using blank document.")
+        doc = Document()
+        sections = doc.sections
+        for section in sections:
+            section.top_margin = Inches(0.75)
+            section.bottom_margin = Inches(0.75)
+            section.left_margin = Inches(0.75)
+            section.right_margin = Inches(0.75)
+            section.header_distance = Inches(0.5)
+            section.footer_distance = Inches(0.5)
+    
+    # Add title
+    title_para = doc.add_paragraph()
+    title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    title_run = title_para.add_run('TESTING AND COMMISSIONING REPORT')
+    title_run.font.size = Pt(16)
+    title_run.font.color.rgb = RGBColor(31, 71, 136)
+    title_run.font.bold = True
+    
+    # Add report date
+    ref_para = doc.add_paragraph()
+    ref_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    ref_run = ref_para.add_run(f"Report Date: {data.get('date', datetime.now().strftime('%B %d, %Y'))}")
+    ref_run.font.size = Pt(11)
+    ref_run.font.color.rgb = RGBColor(100, 100, 100)
+    
+    doc.add_paragraph()
+    
+    # GENERAL INFORMATION SECTION
+    general_heading = doc.add_heading('GENERAL INFORMATION', level=1)
+    style_heading(general_heading, level=1)
+    
+    # Create professional info table
+    general_info = [
+        ("Customer Name", data.get('customer_name', '')),
+        ("Project Name", data.get('project_name', '')),
+        ("Contact Person", data.get('contact_person', '')),
+        ("Location", data.get('outlet_location', '')),
+        ("Contact Number", data.get('contact_number', '')),
+        ("Visit Type", data.get('visit_type', '')),
+        ("Visit Classification", data.get('visit_class', ''))
+    ]
+    
+    create_info_table(doc, general_info)
+    
+    # Add page break before canopy commissioning data
+    doc.add_page_break()
+    
+    # CANOPY COMMISSIONING DATA SECTION
+    canopy_heading = doc.add_heading('CANOPY COMMISSIONING DATA', level=1)
+    style_heading(canopy_heading, level=1)
+    
+    canopy_data = data.get('canopy_data', [])
+    
+    for canopy_idx, canopy in enumerate(canopy_data):
+        # Add page break before each canopy (except the first one since we already have a page break)
+        if canopy_idx > 0:
+            doc.add_page_break()
+        
+        # Check if this is a Mobichef model (only has checklist, no air data)
+        if canopy.get('model') == 'Mobichef':
+            # For Mobichef, create a MOBICHEF DATA table
+            # Create table with header row for "MOBICHEF DATA"
+            mobichef_header_table = doc.add_table(rows=1, cols=1)
+            mobichef_header_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            mobichef_header_cell = mobichef_header_table.cell(0, 0)
+            mobichef_header_cell.text = "MOBICHEF DATA"
+            format_tc_table(mobichef_header_table, is_header=True)
+            
+            # Mobichef Info Table (merged with header visually)
+            mobichef_info_table = doc.add_table(rows=3, cols=2)
+            mobichef_info_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            
+            # Populate mobichef info (only relevant fields)
+            mobichef_info_table.cell(0, 0).text = "Drawing Number"
+            mobichef_info_table.cell(0, 1).text = canopy.get('drawing_number', '')
+            mobichef_info_table.cell(1, 0).text = "Canopy Location"
+            mobichef_info_table.cell(1, 1).text = canopy.get('location', '')
+            mobichef_info_table.cell(2, 0).text = "Canopy Model"
+            mobichef_info_table.cell(2, 1).text = canopy.get('model', '')
+            
+            format_tc_table(mobichef_info_table)
+            
+            doc.add_paragraph()
+        else:
+            # EXTRACT AIR DATA for non-Mobichef models
+            # Create table with header row for "EXTRACT AIR DATA"
+            extract_header_table = doc.add_table(rows=1, cols=1)
+            extract_header_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            extract_header_cell = extract_header_table.cell(0, 0)
+            extract_header_cell.text = "EXTRACT AIR DATA"
+            format_tc_table(extract_header_table, is_header=True)
+            
+            # Extract Air Info Table (merged with header visually)
+            extract_info_table = doc.add_table(rows=6, cols=2)
+            extract_info_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            
+            # Populate extract info
+            extract_info_table.cell(0, 0).text = "Drawing Number"
+            extract_info_table.cell(0, 1).text = canopy.get('drawing_number', '')
+            extract_info_table.cell(1, 0).text = "Canopy Location"
+            extract_info_table.cell(1, 1).text = canopy.get('location', '')
+            extract_info_table.cell(2, 0).text = "Canopy Model"
+            extract_info_table.cell(2, 1).text = canopy.get('model', '')
+            extract_info_table.cell(3, 0).text = "Design Flowrate"
+            extract_info_table.cell(3, 1).text = f"{canopy.get('extract_design_flowrate', 0.0):.2f} m³/s"
+            extract_info_table.cell(4, 0).text = "Quantity of Canopy Sections"
+            extract_info_table.cell(4, 1).text = str(canopy.get('modules', 1))
+            extract_info_table.cell(5, 0).text = "Calculation"
+            extract_info_table.cell(5, 1).text = "Qv = K √Pa"
+            
+            format_tc_table(extract_info_table)
+            
+            # Extract Air Readings Table (connected to info table)
+            extract_data = canopy.get('extract_data', [])
+            if extract_data:
+                # Check if CMW type to determine columns
+                is_cmw = canopy.get('model') in ['CMWF', 'CMWI', 'CMW-MUAP-CJ', 'CMW-CJ']
+                
+                if is_cmw:
+                    # CMW type table with different columns
+                    extract_table = doc.add_table(rows=len(extract_data) + 2, cols=7)  # +2 for header and total
+                    extract_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+                    
+                    # Headers for CMW
+                    headers = ['Hood #', 'Anemometer Reading\n(V - m/s)', 'Length of\nopening\n(mm)', 
+                              'Width of\nopening\n(meter)', 'Achieved\nM³/s', 'Design\nM³/s', 'Percentage']
+                    for col_idx, header in enumerate(headers):
+                        cell = extract_table.cell(0, col_idx)
+                        cell.text = header
+                    
+                    total_achieved = 0
+                    total_design = 0
+                    
+                    # Data rows for CMW
+                    for row_idx, section_data in enumerate(extract_data):
+                        achieved_m3s = section_data.get('flowrate_m3s', 0.0)
+                        achieved_m3h = achieved_m3s * 3600  # Convert to m³/h
+                        
+                        # Get design flowrate per module (in m³/s from input, convert to m³/h for display)
+                        design_total_m3s = canopy.get('extract_design_flowrate', 0.0)
+                        design_per_module_m3s = design_total_m3s / len(extract_data) if len(extract_data) > 0 else 0
+                        design_per_module_m3h = design_per_module_m3s * 3600  # Convert to m³/h
+                        
+                        extract_table.cell(row_idx + 1, 0).text = f"M{row_idx + 1}"
+                        extract_table.cell(row_idx + 1, 1).text = f"{section_data.get('anemometer', 0.0):.2f} m/s"
+                        # Display length in mm (stored in mm, displayed in mm)
+                        length_mm = section_data.get('length_opening', 1800)
+                        extract_table.cell(row_idx + 1, 2).text = f"{length_mm:.0f}"
+                        extract_table.cell(row_idx + 1, 3).text = "0.09m"
+                        extract_table.cell(row_idx + 1, 4).text = f"{achieved_m3h:.2f}"  # Already in m³/h
+                        extract_table.cell(row_idx + 1, 5).text = f"{design_per_module_m3h:.0f}"  # Already in m³/h
+                        extract_table.cell(row_idx + 1, 6).text = f"{section_data.get('percentage', 0):.0f}%"
+                        
+                        total_achieved += achieved_m3h
+                        total_design += design_per_module_m3h
+                    
+                    # Total row - only populate and border columns 3-6
+                    # Leave first 3 columns empty (no borders)
+                    total_row_idx = len(extract_data) + 1
+                    
+                    # Remove borders from first 3 cells of total row
+                    from docx.oxml import OxmlElement
+                    from docx.oxml.ns import qn
+                    
+                    for col_idx in range(3):
+                        cell = extract_table.cell(total_row_idx, col_idx)
+                        tcPr = cell._tc.get_or_add_tcPr()
+                        # Remove all borders for these cells
+                        tcBorders = OxmlElement('w:tcBorders')
+                        for border_name in ['top', 'left', 'bottom', 'right']:
+                            border = OxmlElement(f'w:{border_name}')
+                            border.set(qn('w:val'), 'nil')
+                            tcBorders.append(border)
+                        tcPr.append(tcBorders)
+                    
+                    # Style the TOTAL cell with blue background and white text
+                    total_cell = extract_table.cell(total_row_idx, 3)
+                    total_cell.text = "TOTAL"
+                    
+                    # Apply blue background to TOTAL cell
+                    total_tcPr = total_cell._tc.get_or_add_tcPr()
+                    total_shading = OxmlElement('w:shd')
+                    total_shading.set(qn('w:fill'), '1F4788')  # Blue color
+                    total_tcPr.append(total_shading)
+                    
+                    # Make text white and bold
+                    for paragraph in total_cell.paragraphs:
+                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        for run in paragraph.runs:
+                            run.font.bold = True
+                            run.font.color.rgb = RGBColor(255, 255, 255)
+                            run.font.size = Pt(10)
+                            run.font.name = 'Arial'
+                    
+                    extract_table.cell(total_row_idx, 4).text = f"{total_achieved:.0f}"
+                    extract_table.cell(total_row_idx, 5).text = f"{total_design:.0f}"
+                    if total_design > 0:
+                        total_percentage = (total_achieved / total_design) * 100
+                    else:
+                        total_percentage = 0
+                    extract_table.cell(total_row_idx, 6).text = f"{total_percentage:.0f}%"
+                else:
+                    # Regular table with K-Factor
+                    extract_table = doc.add_table(rows=len(extract_data) + 1, cols=6)
+                    extract_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+                    
+                    # Headers
+                    headers = ['Module', 'T.A.B Point\nReading (Pa)', 'K-Factor\n(m³/h)', 'Flowrate\n(m³/h)', 'Flowrate\n(m³/s)', 'Percentage']
+                    for col_idx, header in enumerate(headers):
+                        cell = extract_table.cell(0, col_idx)
+                        cell.text = header
+                    
+                    # Data rows
+                    for row_idx, section_data in enumerate(extract_data):
+                        extract_table.cell(row_idx + 1, 0).text = f"S{row_idx + 1}"
+                        extract_table.cell(row_idx + 1, 1).text = f"{section_data.get('tab_reading', 0.0):.1f}"
+                        extract_table.cell(row_idx + 1, 2).text = f"{section_data.get('k_factor', 0.0):.1f}"
+                        extract_table.cell(row_idx + 1, 3).text = f"{section_data.get('flowrate_m3h', 0):.0f}"
+                        extract_table.cell(row_idx + 1, 4).text = f"{section_data.get('flowrate_m3s', 0.0):.3f}"
+                        extract_table.cell(row_idx + 1, 5).text = f"{section_data.get('percentage', 0):.0f}%"
+                
+                format_tc_table(extract_table, is_header=True)
+            
+            doc.add_paragraph()
+            
+            # SUPPLY AIR DATA (if applicable)
+            if canopy.get('model') in ['KVF', 'UVF', 'CMWF', 'CMW-MUAP-CJ', 'KVD', 'KVV']:
+                # SUPPLY AIR DATA
+                # Create table with header row for "SUPPLY AIR DATA"
+                supply_header_table = doc.add_table(rows=1, cols=1)
+                supply_header_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+                supply_header_cell = supply_header_table.cell(0, 0)
+                supply_header_cell.text = "SUPPLY AIR DATA"
+                format_tc_table(supply_header_table, is_header=True)
+                
+                # Supply Air Info Table (merged with header visually)
+                supply_info_table = doc.add_table(rows=6, cols=2)
+                supply_info_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+                
+                # Populate supply info
+                supply_info_table.cell(0, 0).text = "Drawing Number"
+                supply_info_table.cell(0, 1).text = canopy.get('drawing_number', '')
+                supply_info_table.cell(1, 0).text = "Canopy Location"
+                supply_info_table.cell(1, 1).text = canopy.get('location', '')
+                supply_info_table.cell(2, 0).text = "Canopy Model"
+                supply_info_table.cell(2, 1).text = canopy.get('model', '')
+                supply_info_table.cell(3, 0).text = "Design Flowrate"
+                supply_info_table.cell(3, 1).text = f"{canopy.get('supply_design_flowrate', 0.0):.2f} m³/s"
+                supply_info_table.cell(4, 0).text = "Quantity of Canopy Sections"
+                supply_info_table.cell(4, 1).text = str(canopy.get('modules', 1))
+                supply_info_table.cell(5, 0).text = "Calculation"
+                supply_info_table.cell(5, 1).text = "Qv = K √Pa"
+                
+                format_tc_table(supply_info_table)
+                
+                # Supply Air Readings Table (connected to info table)
+                supply_data = canopy.get('supply_data', [])
+                if supply_data:
+                    supply_table = doc.add_table(rows=len(supply_data) + 1, cols=6)
+                    supply_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+                    
+                    # Headers
+                    headers = ['Module', 'T.A.B Point\nReading (Pa)', 'K-Factor\n(m³/h)', 'Flowrate\n(m³/h)', 'Flowrate\n(m³/s)', 'Percentage']
+                    for col_idx, header in enumerate(headers):
+                        cell = supply_table.cell(0, col_idx)
+                        cell.text = header
+                    
+                    # Data rows
+                    for row_idx, section_data in enumerate(supply_data):
+                        supply_table.cell(row_idx + 1, 0).text = f"S{row_idx + 1}"
+                        supply_table.cell(row_idx + 1, 1).text = f"{section_data.get('tab_reading', 0.0):.1f}"
+                        supply_table.cell(row_idx + 1, 2).text = f"{section_data.get('k_factor', 0.0):.1f}"
+                        supply_table.cell(row_idx + 1, 3).text = f"{section_data.get('flowrate_m3h', 0):.0f}"
+                        supply_table.cell(row_idx + 1, 4).text = f"{section_data.get('flowrate_m3s', 0.0):.3f}"
+                        supply_table.cell(row_idx + 1, 5).text = f"{section_data.get('percentage', 0):.0f}%"
+                    
+                    format_tc_table(supply_table, is_header=True)
+        
+        
+        # EQUIPMENT CHECKLIST for this canopy
+        # Get checklist for this specific canopy using location and model
+        canopy_location = canopy.get('location', f'Canopy {canopy_idx+1}')
+        canopy_model = canopy.get('model', 'Unknown')
+        checklist_key = f'{canopy_location} {canopy_model}'
+        
+        checklists_data = data.get('tc_checklists', {})
+        if checklist_key in checklists_data and checklists_data[checklist_key]:
+            checklist_items = checklists_data[checklist_key]
+            
+            # Add space before checklist
+            doc.add_paragraph()
+            
+            # Create header table for checklist
+            checklist_header_table = doc.add_table(rows=1, cols=1)
+            checklist_header_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            checklist_header_cell = checklist_header_table.cell(0, 0)
+            checklist_header_cell.text = f"{canopy_location} {canopy_model} EQUIPMENT CHECKLIST"
+            format_tc_table(checklist_header_table, is_header=True)
+            
+            # Create checklist items table (no headers)
+            checklist_table = doc.add_table(rows=len(checklist_items), cols=2)
+            checklist_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+            
+            # Checklist items
+            for row_idx, (item_name, status) in enumerate(checklist_items.items()):
+                checklist_table.cell(row_idx, 0).text = item_name
+                # Handle different status values
+                if status == "Yes" or status == "OK" or status == "Clean":
+                    display_status = "✓"
+                elif status == "No" or status == "Faulty" or status == "Dirty" or status == "Overload" or status == "Missing":
+                    display_status = "✗"
+                elif status == "N/A":
+                    display_status = "N/A"
+                else:
+                    display_status = status  # Display as-is for any other status
+                checklist_table.cell(row_idx, 1).text = display_status
+            
+            format_tc_table(checklist_table, is_header=False)  # No blue header for checklist items
+        
+        doc.add_paragraph()
+    
+    # RECOMMENDATIONS SECTION
+    rec_heading = doc.add_heading('RECOMMENDATIONS', level=1)
+    style_heading(rec_heading, level=1)
+    
+    recommendations_para = doc.add_paragraph()
+    recommendations_para.add_run(data.get('recommendations', 'No specific recommendations at this time.'))
+    
+    # Add page break before signatures
+    doc.add_page_break()
+    
+    # SIGNATURES SECTION
+    sig_heading = doc.add_heading('SIGNATURES', level=1)
+    style_heading(sig_heading, level=1)
+    
+    # Create signature table
+    sig_table = doc.add_table(rows=4, cols=2)
+    sig_table.allow_autofit = False
+    sig_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    
+    # Set column widths
+    for cell in sig_table.columns[0].cells:
+        cell.width = Inches(3)
+    for cell in sig_table.columns[1].cells:
+        cell.width = Inches(3)
+    
+    # Technician signature
+    sig_table.cell(0, 0).text = "Technician:"
+    
+    # Add technician signature image if available
+    if data.get('technician_signature'):
+        sig_cell = sig_table.cell(1, 0)
+        sig_para = sig_cell.paragraphs[0]
+        sig_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = sig_para.add_run()
+        run.add_picture(data.get('technician_signature'), width=Inches(1.5))
+    else:
+        sig_table.cell(1, 0).text = "_" * 35
+    
+    sig_table.cell(2, 0).text = data.get('technician_name', '')
+    sig_table.cell(3, 0).text = f"Date: {datetime.now().strftime('%B %d, %Y')}"
+    
+    # Customer signature
+    sig_table.cell(0, 1).text = "Customer Representative:"
+    sig_table.cell(1, 1).text = "_" * 35
+    sig_table.cell(2, 1).text = data.get('customer_name', '')
+    sig_table.cell(3, 1).text = f"Date: {datetime.now().strftime('%B %d, %Y')}"
+    
+    # Style signature table
+    for row in sig_table.rows:
+        for cell in row.cells:
+            cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            for run in cell.paragraphs[0].runs:
+                run.font.size = Pt(11)
+                run.font.name = 'Arial'
+            set_cell_margins(cell, top=0.1, bottom=0.1)
+    
+    # Make labels bold
+    sig_table.cell(0, 0).paragraphs[0].runs[0].font.bold = True
+    sig_table.cell(0, 1).paragraphs[0].runs[0].font.bold = True
+    
+    # Add footer with Halton branding if not using template
+    doc.add_paragraph()
+    footer_para = doc.add_paragraph()
+    footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    footer_text = footer_para.add_run(
+        "Halton Middle East LTD\n"
+        "Zip Code 23218, 2163 Building 7571\n"
+        "C.R: 4030531945\n"
+        "VAT: 311906248400003\n"
+        "Tel. +966 (012) 6614490"
+    )
+    footer_text.font.size = Pt(9)
+    footer_text.font.name = 'Arial'
+    footer_text.font.color.rgb = RGBColor(128, 128, 128)
+    
+    # Save to bytes
+    doc_bytes = io.BytesIO()
+    doc.save(doc_bytes)
+    doc_bytes.seek(0)
+    
+    return doc_bytes
+
 def main():
     # Check for shared form data in URL parameters
-    query_params = st.query_params
+    query_params = st.experimental_get_query_params()
     
     # Debug: Show what parameters we have
     if query_params:
@@ -1691,17 +2266,17 @@ def main():
         st.markdown("### Report Type Selection")
         report_type = st.selectbox(
             "Select Report Type",
-            ["Technical Report", "General Service Report", "Testing and Commissioning Report (Coming Soon)"],
+            ["Technical Report", "General Service Report", "Testing and Commissioning Report"],
             index=0
         )
         
-        if report_type == "Testing and Commissioning Report (Coming Soon)":
-            st.info("This report type will be available in future versions.")
-            st.stop()
+        # Remove the coming soon check for Testing and Commissioning Report
     
     # Main form based on report type
     if report_type == "Technical Report":
         st.markdown('<h2 class="section-header">Technical Report Form</h2>', unsafe_allow_html=True)
+    elif report_type == "Testing and Commissioning Report":
+        st.markdown('<h2 class="section-header">Testing and Commissioning Report</h2>', unsafe_allow_html=True)
     else:  # General Service Report
         st.markdown('<h2 class="section-header">General Service Report Form</h2>', unsafe_allow_html=True)
     
@@ -1717,9 +2292,19 @@ def main():
     
     with col2:
         contact_number = st.text_input("Contact #*", placeholder="e.g., +1 555 123 4567", key="contact_number")
+        
+        # Set default visit type based on report type
+        visit_type_options = ["", "Service Call", "AMC (Contract)", "Emergency Service", "Installation", "Commissioning", "Inspection (Healthy Visit)"]
+        if report_type == "Testing and Commissioning Report":
+            # Set Commissioning as default for Testing and Commissioning Report
+            default_index = visit_type_options.index("Commissioning")
+        else:
+            default_index = 0
+        
         visit_type = st.selectbox(
             "Visit Type*",
-            ["", "Service Call", "AMC (Contract)", "Emergency Service", "Installation", "Commissioning", "Inspection (Healthy Visit)"],
+            visit_type_options,
+            index=default_index,
             key="visit_type"
         )
         
@@ -1730,8 +2315,633 @@ def main():
         )
         date = st.date_input("Report Date", value=datetime.now(), key="report_date")
     
+    # Testing & Commissioning Report specific sections
+    if report_type == "Testing and Commissioning Report":
+        # Import canopy models and configuration
+        CANOPY_MODELS = ["KVF", "KVI", "UVF", "CMW", "CXW", "CMWF", "CMWI", "CMW-MUAP-CJ", "CMW-CJ", "KVD", "KVV", "Mobichef"]
+        
+        st.markdown("### Canopy Configuration")
+        
+        # Initialize session state for canopies
+        if 'canopy_data' not in st.session_state:
+            st.session_state.canopy_data = []
+        
+        # Add first canopy if list is empty
+        if len(st.session_state.canopy_data) == 0:
+            st.session_state.canopy_data.append({
+                'drawing_number': '',
+                'location': '',
+                'model': '',
+                'extract_design_flowrate': 0.0,
+                'supply_design_flowrate': 0.0,
+                'modules': 1,
+                'extract_data': [],
+                'supply_data': []
+            })
+        
+        # Function to add a new hood
+        def add_new_hood():
+            st.session_state.canopy_data.append({
+                'drawing_number': '',
+                'location': '',
+                'model': '',
+                'extract_design_flowrate': 0.0,
+                'supply_design_flowrate': 0.0,
+                'modules': 1,
+                'extract_data': [],
+                'supply_data': []
+            })
+        
+        # Display canopy configuration forms
+        for i in range(len(st.session_state.canopy_data)):
+            with st.expander(f"🏭 Hood {i+1}", expanded=True):
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.text_input(
+                        "Drawing Number",
+                        key=f"drawing_{i}",
+                        value=st.session_state.canopy_data[i].get('drawing_number', ''),
+                        on_change=lambda idx=i: st.session_state.canopy_data[idx].update({'drawing_number': st.session_state[f"drawing_{idx}"]})
+                    )
+                
+                with col2:
+                    st.text_input(
+                        "Canopy Location",
+                        key=f"location_{i}",
+                        value=st.session_state.canopy_data[i].get('location', ''),
+                        on_change=lambda idx=i: st.session_state.canopy_data[idx].update({'location': st.session_state[f"location_{idx}"]})
+                    )
+                
+                with col3:
+                    # Get current model for this canopy
+                    current_model = st.session_state.canopy_data[i].get('model', '')
+                    st.selectbox(
+                        "Canopy Model",
+                        options=CANOPY_MODELS,
+                        key=f"model_{i}",
+                        index=CANOPY_MODELS.index(current_model) if current_model in CANOPY_MODELS else 0,
+                        on_change=lambda idx=i: st.session_state.canopy_data[idx].update({'model': st.session_state[f"model_{idx}"]})
+                    )
+                    # Always read from session state key to ensure we have the latest value
+                    canopy_model = st.session_state.get(f"model_{i}", st.session_state.canopy_data[i].get('model', ''))
+                
+                # Module Configuration (not for Mobichef)
+                if canopy_model != 'Mobichef':
+                    st.markdown("#### Module Configuration")
+                    
+                    st.number_input(
+                        "Quantity of Canopy Modules",
+                        min_value=1,
+                        max_value=10,
+                        key=f"modules_{i}",
+                        value=st.session_state.canopy_data[i].get('modules', 1),
+                        on_change=lambda idx=i: st.session_state.canopy_data[idx].update({'modules': st.session_state[f"modules_{idx}"]})
+                    )
+                    num_modules = st.session_state.canopy_data[i].get('modules', 1)
+                else:
+                    # Mobichef has no modules
+                    num_modules = 1
+                    st.session_state.canopy_data[i]['modules'] = 1
+                
+                # Check if model has supply (F models or CMW-MUAP-CJ) - use the most current value
+                current_canopy_model = st.session_state.get(f"model_{i}", st.session_state.canopy_data[i].get('model', ''))
+                # Models with supply: all F models plus CMW-MUAP-CJ
+                has_supply = ('F' in current_canopy_model or current_canopy_model == 'CMW-MUAP-CJ') if current_canopy_model else False
+                
+                # Technical specifications - not for Mobichef
+                if canopy_model != 'Mobichef':
+                    st.markdown("#### Design Flowrates")
+                    
+                    if has_supply:
+                        col1, col2 = st.columns(2)
+                    
+                        with col1:
+                            st.number_input(
+                                "Extract Design Flowrate (m³/s)",
+                                min_value=0.0,
+                                step=0.001,
+                                format="%.2f",
+                                key=f"extract_design_{i}",
+                                value=st.session_state.canopy_data[i].get('extract_design_flowrate', 0.0),
+                                on_change=lambda idx=i: st.session_state.canopy_data[idx].update({'extract_design_flowrate': st.session_state[f"extract_design_{idx}"]})
+                            )
+                    
+                        with col2:
+                            st.number_input(
+                                "Supply Design Flowrate (m³/s)",
+                                min_value=0.0,
+                                step=0.001,
+                                format="%.2f",
+                                key=f"supply_design_{i}",
+                                value=st.session_state.canopy_data[i].get('supply_design_flowrate', 0.0),
+                                on_change=lambda idx=i: st.session_state.canopy_data[idx].update({'supply_design_flowrate': st.session_state[f"supply_design_{idx}"]})
+                            )
+                    else:
+                        st.number_input(
+                            "Extract Design Flowrate (m³/s)",
+                            min_value=0.0,
+                            step=0.001,
+                            format="%.2f",
+                            key=f"extract_design_{i}",
+                            value=st.session_state.canopy_data[i].get('extract_design_flowrate', 0.0),
+                            on_change=lambda idx=i: st.session_state.canopy_data[idx].update({'extract_design_flowrate': st.session_state[f"extract_design_{idx}"]})
+                        )
+                        st.session_state.canopy_data[i]['supply_design_flowrate'] = 0.0  # No supply for non-F models
+                else:
+                    # Mobichef doesn't have design flowrates
+                    st.session_state.canopy_data[i]['extract_design_flowrate'] = 0.0
+                    st.session_state.canopy_data[i]['supply_design_flowrate'] = 0.0
+                
+                # Initialize module data
+                while len(st.session_state.canopy_data[i]['extract_data']) < num_modules:
+                    st.session_state.canopy_data[i]['extract_data'].append({
+                        'num_ksa_filters': 1,
+                        'tab_reading': 0.0,
+                        'k_factor': 0.0,
+                        'flowrate_m3h': 0.0,
+                        'flowrate_m3s': 0.0
+                    })
+                    st.session_state.canopy_data[i]['supply_data'].append({
+                        'hood_length': 1.0,
+                        'tab_reading': 0.0,
+                        'k_factor': 0.0,
+                        'flowrate_m3h': 0.0,
+                        'flowrate_m3s': 0.0
+                    })
+                
+                # Trim module data if needed
+                st.session_state.canopy_data[i]['extract_data'] = st.session_state.canopy_data[i]['extract_data'][:num_modules]
+                st.session_state.canopy_data[i]['supply_data'] = st.session_state.canopy_data[i]['supply_data'][:num_modules]
+                
+                # Extract Air Data (not applicable for Mobichef)
+                if canopy_model != 'Mobichef':
+                    st.markdown("#### Extract Air Data")
+                    
+                    # Determine if model has UV (UVF/UVI models)
+                    has_uv = canopy_model in ['UVF', 'UVI'] if canopy_model else False
+                    # Check if it's a CMW type (water wash hood)
+                    is_cmw = canopy_model in ['CMWF', 'CMWI', 'CMW-MUAP-CJ', 'CMW-CJ'] if canopy_model else False
+                    
+                    for j in range(num_modules):
+                        st.markdown(f"**Module {j+1}**")
+                        
+                        if is_cmw:
+                            # CMW type uses different calculation: QE = V × L × W
+                            col1, col2, col3, col4, col5, col6 = st.columns(6)
+                        
+                        if is_cmw:
+                            # CMW type calculation
+                            with col1:
+                                st.number_input(
+                                    "Anemometer (m/s)",
+                                    min_value=0.0,
+                                    step=0.1,
+                                    key=f"anemometer_{i}_{j}",
+                                    value=st.session_state.canopy_data[i]['extract_data'][j].get('anemometer', 0.0),
+                                    help="Anemometer reading in m/s",
+                                    on_change=lambda idx=i, jdx=j: st.session_state.canopy_data[idx]['extract_data'][jdx].update({'anemometer': st.session_state[f"anemometer_{idx}_{jdx}"]})
+                                )
+                            
+                            with col2:
+                                st.number_input(
+                                    "Length (mm)",
+                                    min_value=0,
+                                    step=100,
+                                    key=f"length_opening_{i}_{j}",
+                                    value=int(st.session_state.canopy_data[i]['extract_data'][j].get('length_opening', 1800)),
+                                    help="Length of opening in millimeters",
+                                    on_change=lambda idx=i, jdx=j: st.session_state.canopy_data[idx]['extract_data'][jdx].update({'length_opening': st.session_state[f"length_opening_{idx}_{jdx}"]})
+                                )
+                            
+                            with col3:
+                                width_opening = st.number_input(
+                                    "Width (m)",
+                                    value=0.09,
+                                    disabled=True,
+                                    key=f"width_opening_{i}_{j}",
+                                    help="Width of opening (fixed at 0.09m)"
+                                )
+                                st.session_state.canopy_data[i]['extract_data'][j]['width_opening'] = 0.09
+                            
+                            # Calculate flowrate using QE = V × L × W
+                            # Get the most current values
+                            current_anemometer = st.session_state.canopy_data[i]['extract_data'][j].get('anemometer', 0.0)
+                            current_length_mm = st.session_state.canopy_data[i]['extract_data'][j].get('length_opening', 1800)
+                            current_length_m = current_length_mm / 1000  # Convert mm to m
+                            flowrate_m3s = current_anemometer * current_length_m * width_opening
+                            flowrate_m3h = flowrate_m3s * 3600
+                            st.session_state.canopy_data[i]['extract_data'][j]['flowrate_m3h'] = flowrate_m3h
+                            st.session_state.canopy_data[i]['extract_data'][j]['flowrate_m3s'] = flowrate_m3s
+                            
+                            with col4:
+                                st.text_input(
+                                    "Flowrate (m³/h)",
+                                    value=f"{flowrate_m3h:.0f}",
+                                    disabled=True,
+                                    key=f"extract_m3h_{i}_{j}"
+                                )
+                            
+                            with col5:
+                                st.text_input(
+                                    "Flowrate (m³/s)",
+                                    value=f"{flowrate_m3s:.3f}",
+                                    disabled=True,
+                                    key=f"extract_m3s_{i}_{j}"
+                                )
+                            
+                            # Calculate percentage
+                            design_flowrate = st.session_state.canopy_data[i].get('extract_design_flowrate', 0.0)
+                            if design_flowrate > 0:
+                                percentage = (flowrate_m3s / design_flowrate) * 100
+                            else:
+                                percentage = 0
+                            st.session_state.canopy_data[i]['extract_data'][j]['percentage'] = percentage
+                            
+                            with col6:
+                                st.text_input(
+                                    "Percentage",
+                                    value=f"{percentage:.0f}%",
+                                    disabled=True,
+                                    key=f"extract_percentage_{i}_{j}"
+                                )
+                        else:
+                            # Regular calculation for non-CMW types
+                            col1, col2, col3, col4, col5, col6 = st.columns(6)
+                            
+                            with col1:
+                                # Number of KSA filters for this module
+                                st.number_input(
+                                    "KSA Filters",
+                                    min_value=1,
+                                    max_value=6,
+                                    key=f"ksa_filters_{i}_{j}",
+                                    value=st.session_state.canopy_data[i]['extract_data'][j].get('num_ksa_filters', 1),
+                                    help="Number of KSA filters for this module",
+                                    on_change=lambda idx=i, jdx=j: st.session_state.canopy_data[idx]['extract_data'][jdx].update({'num_ksa_filters': st.session_state[f"ksa_filters_{idx}_{jdx}"]})
+                                )
+                                num_ksa_filters = st.session_state.canopy_data[i]['extract_data'][j].get('num_ksa_filters', 1)
+                            
+                            with col2:
+                                st.number_input(
+                                    "T.A.B Reading (Pa)",
+                                    min_value=0.0,
+                                    step=0.1,
+                                    key=f"extract_tab_{i}_{j}",
+                                    value=st.session_state.canopy_data[i]['extract_data'][j].get('tab_reading', 0.0),
+                                    on_change=lambda idx=i, jdx=j: st.session_state.canopy_data[idx]['extract_data'][jdx].update({'tab_reading': st.session_state[f"extract_tab_{idx}_{jdx}"]})
+                                )
+                            
+                            # Get automatic K-Factor based on this module's number of filters
+                            # Use the most current value
+                            current_ksa = st.session_state.canopy_data[i]['extract_data'][j].get('num_ksa_filters', 1)
+                            auto_k_factor_extract = get_extract_k_factor(current_ksa, canopy_model, has_uv)
+                            
+                            with col3:
+                                # Display auto-calculated K-Factor (read-only)
+                                st.text_input(
+                                    "K-Factor (m³/h)",
+                                    value=f"{auto_k_factor_extract:.1f}",
+                                    disabled=True,
+                                    key=f"extract_k_display_{i}_{j}",
+                                    help=f"Auto-calculated based on {num_ksa_filters} KSA filter(s)"
+                                )
+                                # Store the K-Factor in data
+                                st.session_state.canopy_data[i]['extract_data'][j]['k_factor'] = auto_k_factor_extract
+                            
+                            # Calculate flowrates
+                            # Use the most current values
+                            current_tab = st.session_state.canopy_data[i]['extract_data'][j].get('tab_reading', 0.0)
+                            if current_tab > 0 and auto_k_factor_extract > 0:
+                                import math
+                                flowrate_m3h = auto_k_factor_extract * math.sqrt(current_tab)
+                                flowrate_m3s = flowrate_m3h / 3600
+                                st.session_state.canopy_data[i]['extract_data'][j]['flowrate_m3h'] = flowrate_m3h
+                                st.session_state.canopy_data[i]['extract_data'][j]['flowrate_m3s'] = flowrate_m3s
+                            else:
+                                flowrate_m3h = 0
+                                flowrate_m3s = 0
+                            
+                            with col4:
+                                st.text_input(
+                                    "Flowrate (m³/h)",
+                                    value=f"{flowrate_m3h:.0f}",
+                                    disabled=True,
+                                    key=f"extract_m3h_{i}_{j}"
+                                )
+                            
+                            with col5:
+                                st.text_input(
+                                    "Flowrate (m³/s)",
+                                    value=f"{flowrate_m3s:.3f}",
+                                    disabled=True,
+                                    key=f"extract_m3s_{i}_{j}"
+                                )
+                            
+                            # Calculate percentage
+                            design_flowrate = st.session_state.canopy_data[i].get('extract_design_flowrate', 0.0)
+                            if design_flowrate > 0:
+                                percentage = (flowrate_m3s / design_flowrate) * 100
+                            else:
+                                percentage = 0
+                            st.session_state.canopy_data[i]['extract_data'][j]['percentage'] = percentage
+                            
+                            with col6:
+                                st.text_input(
+                                    "Percentage",
+                                    value=f"{percentage:.0f}%",
+                                    disabled=True,
+                                    key=f"extract_percentage_{i}_{j}"
+                                )
+                
+                # Supply Air Data (if model has supply)
+                if canopy_model in ['KVF', 'UVF', 'CMWF', 'CMW-MUAP-CJ', 'KVD', 'KVV']:
+                    st.markdown("#### Supply Air Data")
+                    
+                    for j in range(num_modules):
+                        st.markdown(f"**Module {j+1}**")
+                        col1, col2, col3, col4, col5, col6 = st.columns(6)
+                        
+                        with col1:
+                            # Hood/Plenum length for this module
+                            st.number_input(
+                                "Hood Length (m)",
+                                min_value=1.0,
+                                max_value=4.0,
+                                step=0.1,
+                                format="%.1f",
+                                key=f"hood_length_{i}_{j}",
+                                value=st.session_state.canopy_data[i]['supply_data'][j].get('hood_length', 1.0),
+                                help="Hood length for this module",
+                                on_change=lambda idx=i, jdx=j: st.session_state.canopy_data[idx]['supply_data'][jdx].update({'hood_length': st.session_state[f"hood_length_{idx}_{jdx}"]})
+                            )
+                            hood_length = st.session_state.canopy_data[i]['supply_data'][j].get('hood_length', 1.0)
+                        
+                        with col2:
+                            st.number_input(
+                                "T.A.B Reading (Pa)",
+                                min_value=0.0,
+                                step=0.1,
+                                key=f"supply_tab_{i}_{j}",
+                                value=st.session_state.canopy_data[i]['supply_data'][j].get('tab_reading', 0.0),
+                                on_change=lambda idx=i, jdx=j: st.session_state.canopy_data[idx]['supply_data'][jdx].update({'tab_reading': st.session_state[f"supply_tab_{idx}_{jdx}"]})
+                            )
+                        
+                        # Get automatic K-Factor based on this module's hood length
+                        current_hood_length = st.session_state.canopy_data[i]['supply_data'][j].get('hood_length', 1.0)
+                        auto_k_factor_supply = get_supply_k_factor(current_hood_length)
+                        
+                        with col3:
+                            # Display auto-calculated K-Factor (read-only)
+                            st.text_input(
+                                "K-Factor (m³/h)",
+                                value=f"{auto_k_factor_supply:.1f}",
+                                disabled=True,
+                                key=f"supply_k_display_{i}_{j}",
+                                help=f"Auto-calculated based on {hood_length:.1f}m hood length"
+                            )
+                            # Store the K-Factor in data
+                            st.session_state.canopy_data[i]['supply_data'][j]['k_factor'] = auto_k_factor_supply
+                        
+                        # Calculate flowrates
+                        current_supply_tab = st.session_state.canopy_data[i]['supply_data'][j].get('tab_reading', 0.0)
+                        if current_supply_tab > 0 and auto_k_factor_supply > 0:
+                            import math
+                            flowrate_m3h = auto_k_factor_supply * math.sqrt(current_supply_tab)
+                            flowrate_m3s = flowrate_m3h / 3600
+                            st.session_state.canopy_data[i]['supply_data'][j]['flowrate_m3h'] = flowrate_m3h
+                            st.session_state.canopy_data[i]['supply_data'][j]['flowrate_m3s'] = flowrate_m3s
+                        else:
+                            flowrate_m3h = 0
+                            flowrate_m3s = 0
+                        
+                        with col4:
+                            st.text_input(
+                                "Flowrate (m³/h)",
+                                value=f"{flowrate_m3h:.0f}",
+                                disabled=True,
+                                key=f"supply_m3h_{i}_{j}"
+                            )
+                        
+                        with col5:
+                            st.text_input(
+                                "Flowrate (m³/s)",
+                                value=f"{flowrate_m3s:.3f}",
+                                disabled=True,
+                                key=f"supply_m3s_{i}_{j}"
+                            )
+                        
+                        # Calculate percentage for supply
+                        design_flowrate = st.session_state.canopy_data[i].get('supply_design_flowrate', 0.0)
+                        if design_flowrate > 0:
+                            percentage = (flowrate_m3s / design_flowrate) * 100
+                        else:
+                            percentage = 0
+                        st.session_state.canopy_data[i]['supply_data'][j]['percentage'] = percentage
+                        
+                        with col6:
+                            st.text_input(
+                                "Percentage",
+                                value=f"{percentage:.0f}%",
+                                disabled=True,
+                                key=f"supply_percentage_{i}_{j}"
+                            )
+                
+                # Inspection Checklist (only for Testing & Commissioning Report)
+                if report_type == "Testing and Commissioning Report":
+                    st.markdown("---")  # Add separator
+                    canopy_location = st.session_state.canopy_data[i].get('location', f'Canopy {i+1}')
+                    canopy_model = st.session_state.canopy_data[i].get('model', 'Unknown')
+                    st.markdown(f"#### {canopy_location} {canopy_model} Equipment Checklist")
+            
+                    # Initialize session state for this canopy's checklist if not exists
+                    if 'tc_checklists' not in st.session_state:
+                        st.session_state.tc_checklists = {}
+                    
+                    # Create a more descriptive key using location and model
+                    canopy_location = st.session_state.canopy_data[i].get('location', f'Canopy {i+1}')
+                    canopy_model = st.session_state.canopy_data[i].get('model', 'Unknown')
+                    checklist_key = f'{canopy_location} {canopy_model}'
+                    
+                    if checklist_key not in st.session_state.tc_checklists:
+                        st.session_state.tc_checklists[checklist_key] = {}
+                
+                    # Define checklist items based on model type
+                    checklist_items = []
+                
+                    if canopy_model in ['KVI', 'KVF', 'KVD', 'KVV']:
+                        checklist_items = [
+                            "All filters are in place",
+                            "Hood lights are working",
+                            "Capture Jet Fan is Working"
+                        ]
+                    elif canopy_model in ['UVF', 'UVI']:
+                        checklist_items = [
+                            "Communication to all UV Controllers confirmed",
+                            "Safety interlock to UV Door/chambers tested for correct operation", 
+                            "Safety interlock to all filters tested for correct operation",
+                            "UV operation tested and left working",
+                            "HOOD lights are working",
+                            "CAPTURE JET FAN is working"
+                        ]
+                    
+                        # Check if water wash system exists
+                        has_water_wash = st.checkbox(
+                            "UV Hood has Water Wash System",
+                            key=f"uv_water_wash_{i}",
+                            value=st.session_state.canopy_data[i].get('has_water_wash', False)
+                        )
+                        st.session_state.canopy_data[i]['has_water_wash'] = has_water_wash
+                    
+                        if has_water_wash:
+                            checklist_items.extend([
+                                "Checked operation of Water Nozzles",
+                                "Checked Hot Water pressure (2 Bar at 65 Degrees)",
+                                "Checked Hot Water flow to the Hoods",
+                                "Checked the detergent pump operation",
+                                "Checked the detergent chemical flow to the hood"
+                            ])
+                        
+                    elif canopy_model in ['CMWF', 'CMWI', 'CMW', 'CXW', 'CMW-MUAP-CJ', 'CMW-CJ']:
+                        checklist_items = [
+                            "Checked operation of Water Nozzles",
+                            "Checked Cold Water pressure (2 BAR)",
+                            "Checked Hot Water pressure (2 BAR)",
+                            "Checked Water flow to the Hoods",
+                            "Checked the detergent pump operation",
+                            "Checked the detergent chemical flow to the hood",
+                            "HOOD lights are working",
+                            "CAPTURE JET FAN is working"
+                        ]
+                    elif canopy_model == 'Mobichef':
+                        checklist_items = [
+                            "Hood lights status",
+                            "All KSA Filters in place",
+                            "All Mesh Filters in place",
+                            "Check pre filter status",
+                            "Check ESP status",
+                            "Check Carbon Filter status",
+                            "Check Carbon Particle filter status"
+                        ]
+                
+                    # Add Marvel system checklist if needed
+                    has_marvel = st.checkbox(
+                        "Include Marvel System Checklist",
+                        key=f"marvel_{i}",
+                        value=st.session_state.canopy_data[i].get('has_marvel', False)
+                    )
+                    st.session_state.canopy_data[i]['has_marvel'] = has_marvel
+                
+                    if has_marvel:
+                        marvel_items = [
+                            "Display Touch Screen tested for correct operation",
+                            "Control Calculator power up and tested for correct operation",
+                            "Settings configured (0-10Vdc / 4-20mA)",
+                            "Exhaust Hood ABD dampers are operational",
+                            "Infrared Sensor (IR Sensor) tested for operation and Direction Adjusted",
+                            "Room Sensor installed and tested",
+                            "No Alarm on the Touch Screen"
+                        ]
+                        checklist_items.extend(marvel_items)
+                
+                    # Display checklist items with dropdowns
+                    if checklist_items:
+                        # Display main checklist header
+                        st.markdown("##### Main Equipment Checklist")
+                        
+                        # Track if headers have been shown
+                        water_wash_header_shown = False
+                        marvel_header_shown = False
+                        
+                        # Determine where water wash items start (for UV models with water wash)
+                        water_wash_start_item = "Checked operation of Water Nozzles"
+                        
+                        # Determine where Marvel items start
+                        marvel_start_item = "Display Touch Screen tested for correct operation"
+                        
+                        for idx, item in enumerate(checklist_items):
+                            # Add section headers when needed (only once)
+                            if item == water_wash_start_item and not water_wash_header_shown:
+                                st.markdown("##### Water Wash System Checklist")
+                                water_wash_header_shown = True
+                            elif item == marvel_start_item and not marvel_header_shown:
+                                st.markdown("##### Marvel System Checklist")
+                                marvel_header_shown = True
+                            
+                            col1, col2 = st.columns([3, 1])
+                            with col1:
+                                st.write(item)
+                            with col2:
+                                # Different dropdown options for Mobichef
+                                if canopy_model == 'Mobichef':
+                                    # Determine options based on item type
+                                    if 'lights' in item.lower():
+                                        options = ["OK", "Faulty", "N/A"]
+                                        default_index = 0  # Default to "OK"
+                                    elif 'All KSA Filters in place' in item or 'All Mesh Filters in place' in item:
+                                        # Special case for KSA and Mesh filters
+                                        options = ["OK", "Missing", "N/A"]
+                                        default_index = 0  # Default to "OK"
+                                    elif 'filter' in item.lower() or 'esp' in item.lower():
+                                        options = ["Clean", "Dirty", "Overload", "Missing", "N/A"]
+                                        default_index = 0  # Default to "Clean"
+                                    else:
+                                        options = ["OK", "Faulty", "N/A"]
+                                        default_index = 0  # Default to "OK"
+                                    
+                                    status = st.selectbox(
+                                        "",
+                                        options=options,
+                                        key=f"checklist_{i}_{idx}",
+                                        label_visibility="collapsed",
+                                        index=default_index
+                                    )
+                                else:
+                                    # Yes/No for other models
+                                    status = st.selectbox(
+                                        "",
+                                        options=["Yes", "No"],
+                                        key=f"checklist_{i}_{idx}",
+                                        label_visibility="collapsed",
+                                        index=0  # Default to "Yes" (first option)
+                                    )
+                                # Store in session state
+                            st.session_state.tc_checklists[checklist_key][item] = status
+            
+            # Delete button at the bottom of each expander (only show if more than one hood)
+            if len(st.session_state.canopy_data) > 1:
+                # Get location and model for delete button text
+                delete_location = st.session_state.canopy_data[i].get('location', '')
+                delete_model = st.session_state.canopy_data[i].get('model', '')
+                delete_text = f"🗑️ Delete"
+                if delete_location:
+                    delete_text += f" {delete_location}"
+                if delete_model:
+                    delete_text += f" {delete_model}"
+                if not delete_location and not delete_model:
+                    delete_text += f" Hood {i+1}"
+                
+                if st.button(delete_text, key=f"delete_hood_{i}", use_container_width=True):
+                    st.session_state.canopy_data.pop(i)
+                    # Clean up checklist data for this hood
+                    if i < len(st.session_state.canopy_data):
+                        canopy_location = st.session_state.canopy_data[i].get('location', f'Hood {i+1}')
+                        canopy_model = st.session_state.canopy_data[i].get('model', 'Unknown')
+                    else:
+                        canopy_location = f'Hood {i+1}'
+                        canopy_model = 'Unknown'
+                    checklist_key = f'{canopy_location} {canopy_model}'
+                    if 'tc_checklists' in st.session_state and checklist_key in st.session_state.tc_checklists:
+                        del st.session_state.tc_checklists[checklist_key]
+                    st.rerun()
+        
+        # Single Add Hood button at the bottom
+        if st.button("➕ Add Hood", key="add_hood_main", use_container_width=True):
+            add_new_hood()
+            st.rerun()
+    
     # Kitchen and Equipment Inspection Section (only for Technical Report)
-    if report_type == "Technical Report":
+    elif report_type == "Technical Report":
         st.markdown("### Kitchen and Equipment Inspection")
         
         # Number of kitchens
@@ -2186,7 +3396,6 @@ def main():
         
         with col3:
             technician_name = st.text_input("Technician Name*", placeholder="Enter your full name")
-            technician_id = st.text_input("Technician ID*", placeholder="Enter your employee ID")
         
         with col4:
             service_date = st.date_input("Service Date", value=datetime.now())
@@ -2286,7 +3495,17 @@ def main():
             date = st.session_state.get('report_date', datetime.now())
             
             # Validation - different based on report type
-            if report_type == "Technical Report":
+            if report_type == "Testing and Commissioning Report":
+                required_fields = {
+                    "Customer's Name": customer_name,
+                    "Project Name": project_name,
+                    "Contact Person": contact_person,
+                    "Outlet/Location": outlet_location,
+                    "Contact Number": contact_number,
+                    "Visit Type": visit_type,
+                    "Technician Name": technician_name
+                }
+            elif report_type == "Technical Report":
                 required_fields = {
                     "Customer's Name": customer_name,
                     "Project Name": project_name,
@@ -2296,8 +3515,7 @@ def main():
                     "Visit Type": visit_type,
                     "Work Performed": work_performed,
                     "Spare Parts": st.session_state.get('spare_parts', []),
-                    "Technician Name": technician_name,
-                    "Technician ID": technician_id
+                    "Technician Name": technician_name
                 }
             else:  # General Service Report
                 # Check work performed list
@@ -2319,22 +3537,22 @@ def main():
                     "Visit Type": visit_type,
                     "Work Performed Items": "Valid" if work_items_valid else "",
                     "Spare Parts": st.session_state.get('spare_parts', []),
-                    "Technician Name": technician_name,
-                    "Technician ID": technician_id
+                    "Technician Name": technician_name
                 }
             
             missing_fields = [field for field, value in required_fields.items() if not value]
             
-            # Validate kitchen and equipment data
+            # Validate kitchen and equipment data (only for Technical Report)
             equipment_errors = []
-            for kitchen_idx, kitchen in enumerate(st.session_state.kitchen_list):
-                kitchen_name = kitchen.get('name', f'Kitchen {kitchen_idx + 1}')
-                for equip_idx, equipment in enumerate(kitchen.get('equipment_list', [])):
-                    equip_name = f"{kitchen_name} - Equipment #{equip_idx + 1}"
-                    if not equipment.get('type'):
-                        equipment_errors.append(f"{equip_name}: Equipment type is required")
-                    elif not equipment.get('location'):
-                        equipment_errors.append(f"{equip_name}: Location is required")
+            if report_type == "Technical Report":
+                for kitchen_idx, kitchen in enumerate(st.session_state.kitchen_list):
+                    kitchen_name = kitchen.get('name', f'Kitchen {kitchen_idx + 1}')
+                    for equip_idx, equipment in enumerate(kitchen.get('equipment_list', [])):
+                        equip_name = f"{kitchen_name} - Equipment #{equip_idx + 1}"
+                        if not equipment.get('type'):
+                            equipment_errors.append(f"{equip_name}: Equipment type is required")
+                        elif not equipment.get('location'):
+                            equipment_errors.append(f"{equip_name}: Location is required")
             
             # Show reminders for missing fields but don't block submission
             if missing_fields or equipment_errors:
@@ -2403,7 +3621,25 @@ def main():
                     customer_signature_img = img_bytes
             
             # Collect all data based on report type
-            if report_type == "Technical Report":
+            if report_type == "Testing and Commissioning Report":
+                report_data = {
+                    'report_type': report_type,
+                    'customer_name': customer_name,
+                    'project_name': project_name,
+                    'contact_person': contact_person,
+                    'outlet_location': outlet_location,
+                    'contact_number': contact_number,
+                    'visit_type': visit_type,
+                    'visit_class': visit_class,
+                    'date': date.strftime('%Y-%m-%d'),
+                    'canopy_data': st.session_state.get('canopy_data', []),
+                    'tc_checklists': st.session_state.get('tc_checklists', {}),
+                    'recommendations': recommendations,
+                    'technician_name': technician_name,
+                    'service_date': service_date.strftime('%Y-%m-%d'),
+                    'technician_signature': signature_img
+                }
+            elif report_type == "Technical Report":
                 report_data = {
                     'report_type': report_type,
                     'customer_name': customer_name,
@@ -2420,7 +3656,6 @@ def main():
                     'spare_parts': st.session_state.get('spare_parts', []),
                     'recommendations': recommendations,
                     'technician_name': technician_name,
-                    'technician_id': technician_id,
                     'service_date': service_date.strftime('%Y-%m-%d'),
                     'technician_signature': signature_img,
                     'customer_signatory': st.session_state.get('customer_signatory', customer_name),
@@ -2441,7 +3676,6 @@ def main():
                     'spare_parts': st.session_state.get('spare_parts', []),
                     'recommendations': recommendations,
                     'technician_name': technician_name,
-                    'technician_id': technician_id,
                     'service_date': service_date.strftime('%Y-%m-%d'),
                     'technician_signature': signature_img,
                     'customer_signatory': st.session_state.get('customer_signatory', customer_name),
@@ -2486,6 +3720,9 @@ def main():
             if report_type == "Technical Report":
                 doc_bytes = create_technical_report(st.session_state.report_data)
                 filename_prefix = "Technical_Report"
+            elif report_type == "Testing and Commissioning Report":
+                doc_bytes = create_testing_commissioning_report(st.session_state.report_data)
+                filename_prefix = "Testing_Commissioning_Report"
             else:  # General Service Report
                 doc_bytes = create_general_service_report(st.session_state.report_data)
                 filename_prefix = "General_Service_Report"
