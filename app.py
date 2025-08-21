@@ -1263,6 +1263,7 @@ def create_technical_report(data):
         sig_para = sig_cell.paragraphs[0]
         sig_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run = sig_para.add_run()
+        data.get('technician_signature').seek(0)
         run.add_picture(data.get('technician_signature'), width=Inches(1.5))
     else:
         sig_table.cell(1, 0).text = "_" * 35
@@ -1279,6 +1280,7 @@ def create_technical_report(data):
         sig_para = sig_cell.paragraphs[0]
         sig_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run = sig_para.add_run()
+        data.get('customer_signature').seek(0)
         run.add_picture(data.get('customer_signature'), width=Inches(1.5))
     else:
         sig_table.cell(1, 1).text = "_" * 35
@@ -1688,6 +1690,8 @@ def create_general_service_report(data):
     sig_space_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
     if data.get('technician_signature'):
+        # Reset file position before adding picture
+        data.get('technician_signature').seek(0)
         run = sig_space_para.add_run()
         run.add_picture(data.get('technician_signature'), width=Inches(2))
     else:
@@ -1722,6 +1726,8 @@ def create_general_service_report(data):
     cust_space_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
     if data.get('customer_signature'):
+        # Reset file position before adding picture
+        data.get('customer_signature').seek(0)
         run = cust_space_para.add_run()
         run.add_picture(data.get('customer_signature'), width=Inches(2))
     else:
@@ -2274,70 +2280,133 @@ def create_testing_commissioning_report(data):
     # Add page break before signatures
     doc.add_page_break()
     
-    # SIGNATURES SECTION
-    sig_heading = doc.add_heading('SIGNATURES', level=1)
+    # ACKNOWLEDGMENT AND SIGNATURES SECTION
+    sig_heading = doc.add_heading('ACKNOWLEDGMENT AND SIGNATURES', level=1)
     style_heading(sig_heading, level=1)
     
-    # Create signature table
-    sig_table = doc.add_table(rows=4, cols=2)
+    # Add acknowledgment text
+    ack_para = doc.add_paragraph()
+    ack_text = ack_para.add_run(
+        "The undersigned acknowledge that the service described in this report has been "
+        "completed satisfactorily and in accordance with the agreed specifications."
+    )
+    ack_text.font.size = Pt(11)
+    ack_text.font.name = 'Arial'
+    ack_text.font.italic = True
+    ack_para.paragraph_format.space_after = Pt(36)
+    
+    # Add some space before the signature area
+    doc.add_paragraph()
+    doc.add_paragraph()
+    
+    # Create a 2-column table for side-by-side signatures
+    sig_table = doc.add_table(rows=5, cols=2)
     sig_table.allow_autofit = False
     sig_table.alignment = WD_TABLE_ALIGNMENT.CENTER
     
     # Set column widths
     for cell in sig_table.columns[0].cells:
-        cell.width = Inches(3)
+        cell.width = Inches(3.2)
     for cell in sig_table.columns[1].cells:
-        cell.width = Inches(3)
+        cell.width = Inches(3.2)
     
-    # Technician signature
-    sig_table.cell(0, 0).text = "Technician:"
+    # Service Technician section
+    tech_label = sig_table.cell(0, 0)
+    tech_label.text = "Service Technician:"
+    tech_label.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for run in tech_label.paragraphs[0].runs:
+        run.font.bold = True
+        run.font.size = Pt(12)
+        run.font.name = 'Arial'
     
-    # Add technician signature image if available
+    # Add space for signature
+    sig_space = sig_table.cell(1, 0)
+    sig_space_para = sig_space.paragraphs[0]
+    sig_space_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
     if data.get('technician_signature'):
-        sig_cell = sig_table.cell(1, 0)
-        sig_para = sig_cell.paragraphs[0]
-        sig_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = sig_para.add_run()
-        run.add_picture(data.get('technician_signature'), width=Inches(1.5))
+        # Reset file position before adding picture
+        data.get('technician_signature').seek(0)
+        run = sig_space_para.add_run()
+        run.add_picture(data.get('technician_signature'), width=Inches(2))
     else:
-        sig_table.cell(1, 0).text = "_" * 35
+        # Create empty space for signature
+        sig_space_para.add_run("\n\n\n\n")
     
-    sig_table.cell(2, 0).text = data.get('technician_name', '')
-    sig_table.cell(3, 0).text = f"Date: {datetime.now().strftime('%B %d, %Y')}"
+    # Signature line
+    sig_line = sig_table.cell(2, 0)
+    sig_line.text = "_" * 30
+    sig_line.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    # Customer signature
-    sig_table.cell(0, 1).text = "Customer Representative:"
-    sig_table.cell(1, 1).text = "_" * 35
-    sig_table.cell(2, 1).text = data.get('customer_name', '')
-    sig_table.cell(3, 1).text = f"Date: {datetime.now().strftime('%B %d, %Y')}"
+    # Technician name
+    name_cell = sig_table.cell(3, 0)
+    name_cell.text = data.get('technician_name', '')
+    name_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
     
-    # Style signature table
+    # Date
+    date_cell = sig_table.cell(4, 0)
+    date_cell.text = f"Date: {datetime.now().strftime('%B %d, %Y')}"
+    date_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Customer Representative section
+    cust_label = sig_table.cell(0, 1)
+    cust_label.text = "Customer Representative:"
+    cust_label.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for run in cust_label.paragraphs[0].runs:
+        run.font.bold = True
+        run.font.size = Pt(12)
+        run.font.name = 'Arial'
+    
+    # Add space for customer signature
+    cust_space = sig_table.cell(1, 1)
+    cust_space_para = cust_space.paragraphs[0]
+    cust_space_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    if data.get('customer_signature'):
+        # Reset file position before adding picture
+        data.get('customer_signature').seek(0)
+        run = cust_space_para.add_run()
+        run.add_picture(data.get('customer_signature'), width=Inches(2))
+    else:
+        # Create empty space for signature
+        cust_space_para.add_run("\n\n\n\n")
+    
+    # Signature line
+    cust_line = sig_table.cell(2, 1)
+    cust_line.text = "_" * 30
+    cust_line.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Customer name
+    cust_name_cell = sig_table.cell(3, 1)
+    cust_name_cell.text = data.get('customer_name', '')
+    cust_name_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Date
+    cust_date = sig_table.cell(4, 1)
+    cust_date.text = f"Date: {datetime.now().strftime('%B %d, %Y')}"
+    cust_date.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Style all text in signature table
     for row in sig_table.rows:
         for cell in row.cells:
-            cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-            for run in cell.paragraphs[0].runs:
-                run.font.size = Pt(11)
-                run.font.name = 'Arial'
+            for para in cell.paragraphs:
+                for run in para.runs:
+                    if not run.font.bold:
+                        run.font.size = Pt(11)
+                        run.font.name = 'Arial'
             set_cell_margins(cell, top=0.1, bottom=0.1)
     
-    # Make labels bold
-    sig_table.cell(0, 0).paragraphs[0].runs[0].font.bold = True
-    sig_table.cell(0, 1).paragraphs[0].runs[0].font.bold = True
-    
-    # Add footer with Halton branding if not using template
+    # Add confidentiality notice similar to Technical Report
     doc.add_paragraph()
-    footer_para = doc.add_paragraph()
-    footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    footer_text = footer_para.add_run(
-        "Halton Middle East LTD\n"
-        "Zip Code 23218, 2163 Building 7571\n"
-        "C.R: 4030531945\n"
-        "VAT: 311906248400003\n"
-        "Tel. +966 (012) 6614490"
+    conf_para = doc.add_paragraph()
+    conf_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    conf_text = conf_para.add_run(
+        "This report is confidential and proprietary.\n"
+        "For service inquiries, please contact our Service Department."
     )
-    footer_text.font.size = Pt(9)
-    footer_text.font.name = 'Arial'
-    footer_text.font.color.rgb = RGBColor(128, 128, 128)
+    conf_text.font.size = Pt(9)
+    conf_text.font.name = 'Arial'
+    conf_text.font.color.rgb = RGBColor(128, 128, 128)
     
     # Save to bytes
     doc_bytes = io.BytesIO()
@@ -3746,6 +3815,7 @@ def main():
                     cropped.save(img_bytes, format='PNG')
                     img_bytes.seek(0)
                     customer_signature_img = img_bytes
+                    st.success("✅ Customer signature captured")
             
             # Collect all data based on report type
             if report_type == "Testing and Commissioning Report":
