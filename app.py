@@ -2206,7 +2206,7 @@ def create_testing_commissioning_report(data):
                 
                 # Supply Air Readings Table (connected to info table)
                 if supply_data:
-                    supply_table = doc.add_table(rows=len(supply_data) + 1, cols=7)
+                    supply_table = doc.add_table(rows=len(supply_data) + 2, cols=7)  # +2 for header and total
                     supply_table.alignment = WD_TABLE_ALIGNMENT.CENTER
                     
                     # Headers
@@ -2215,15 +2215,77 @@ def create_testing_commissioning_report(data):
                         cell = supply_table.cell(0, col_idx)
                         cell.text = header
                     
+                    total_achieved_m3h = 0
+                    total_achieved_m3s = 0
+                    total_design_ls = 0
+                    
                     # Data rows
                     for row_idx, section_data in enumerate(supply_data):
+                        flowrate_m3h = section_data.get('flowrate_m3h', 0)
+                        flowrate_m3s = section_data.get('flowrate_m3s', 0.0)
+                        design_ls = section_data.get('design_flowrate_ls', 0.0)
+                        
                         supply_table.cell(row_idx + 1, 0).text = f"M{row_idx + 1}"
                         supply_table.cell(row_idx + 1, 1).text = f"{section_data.get('tab_reading', 0.0):.1f}"
                         supply_table.cell(row_idx + 1, 2).text = f"{section_data.get('k_factor', 0.0):.1f}"
-                        supply_table.cell(row_idx + 1, 3).text = f"{section_data.get('flowrate_m3h', 0):.0f}"
-                        supply_table.cell(row_idx + 1, 4).text = f"{section_data.get('flowrate_m3s', 0.0):.3f}"
-                        supply_table.cell(row_idx + 1, 5).text = f"{section_data.get('design_flowrate_ls', 0.0):.0f}"
+                        supply_table.cell(row_idx + 1, 3).text = f"{flowrate_m3h:.0f}"
+                        supply_table.cell(row_idx + 1, 4).text = f"{flowrate_m3s:.3f}"
+                        supply_table.cell(row_idx + 1, 5).text = f"{design_ls:.0f}"
                         supply_table.cell(row_idx + 1, 6).text = f"{section_data.get('percentage', 0):.0f}%"
+                        
+                        total_achieved_m3h += flowrate_m3h
+                        total_achieved_m3s += flowrate_m3s
+                        total_design_ls += design_ls
+                    
+                    # Total row
+                    total_row_idx = len(supply_data) + 1
+                    
+                    # Add borders to total row starting from column 2 (index 2)
+                    from docx.oxml import OxmlElement
+                    from docx.oxml.ns import qn
+                    
+                    # First two columns empty (no borders)
+                    for col_idx in range(2):
+                        cell = supply_table.cell(total_row_idx, col_idx)
+                        tc = cell._tc
+                        tcPr = tc.get_or_add_tcPr()
+                        tcBorders = OxmlElement('w:tcBorders')
+                        for border_name in ['top', 'left', 'bottom', 'right']:
+                            border = OxmlElement(f'w:{border_name}')
+                            border.set(qn('w:val'), 'nil')
+                            tcBorders.append(border)
+                        tcPr.append(tcBorders)
+                    
+                    # Cell 2 gets "Total" text with dark blue background
+                    total_cell = supply_table.cell(total_row_idx, 2)
+                    total_cell.text = "Total"
+                    # Set background color to dark blue
+                    shading_elm = OxmlElement('w:shd')
+                    shading_elm.set(qn('w:fill'), '2B5797')  # Dark blue
+                    total_cell._tc.get_or_add_tcPr().append(shading_elm)
+                    
+                    # Make text white and bold
+                    for paragraph in total_cell.paragraphs:
+                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        for run in paragraph.runs:
+                            run.font.bold = True
+                            run.font.color.rgb = RGBColor(255, 255, 255)
+                            run.font.size = Pt(10)
+                            run.font.name = 'Arial'
+                    
+                    # Fill in total values
+                    supply_table.cell(total_row_idx, 3).text = f"{total_achieved_m3h:.0f}"
+                    supply_table.cell(total_row_idx, 4).text = f"{total_achieved_m3s:.3f}"
+                    supply_table.cell(total_row_idx, 5).text = f"{total_design_ls:.0f}"
+                    
+                    # Calculate percentage
+                    if total_design_ls > 0:
+                        # Convert design from L/s to m³/h for percentage calculation
+                        total_design_m3h = (total_design_ls / 1000) * 3600
+                        total_percentage = (total_achieved_m3h / total_design_m3h) * 100
+                    else:
+                        total_percentage = 0
+                    supply_table.cell(total_row_idx, 6).text = f"{total_percentage:.0f}%"
                     
                     format_tc_table(supply_table, is_header=True)
         
