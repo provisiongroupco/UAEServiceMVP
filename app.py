@@ -1970,11 +1970,10 @@ def create_testing_commissioning_report(data):
             extract_info_table.cell(2, 1).text = canopy.get('model', '')
             # Get extract data first
             extract_data = canopy.get('extract_data', [])
-            # Sum design flowrates from all modules (convert from L/s to m³/s)
+            # Sum design flowrates from all modules (in L/s)
             total_extract_design_ls = sum(module.get('design_flowrate_ls', 0.0) for module in extract_data)
-            total_extract_design_m3s = total_extract_design_ls / 1000  # Convert L/s to m³/s
             extract_info_table.cell(3, 0).text = "Design Flowrate"
-            extract_info_table.cell(3, 1).text = f"{total_extract_design_m3s:.2f} m³/s"
+            extract_info_table.cell(3, 1).text = f"{total_extract_design_ls:.0f} L/s"
             extract_info_table.cell(4, 0).text = "Quantity of Canopy Sections"
             extract_info_table.cell(4, 1).text = str(canopy.get('modules', 1))
             extract_info_table.cell(5, 0).text = "Calculation"
@@ -2013,10 +2012,8 @@ def create_testing_commissioning_report(data):
                         achieved_m3s = section_data.get('flowrate_m3s', 0.0)
                         achieved_m3h = achieved_m3s * 3600  # Convert to m³/h
                         
-                        # Get design flowrate for this module (stored in L/s, convert to m³/h for display)
+                        # Get design flowrate for this module (stored in L/s)
                         design_ls = section_data.get('design_flowrate_ls', 0.0)
-                        design_m3s = design_ls / 1000  # Convert L/s to m³/s
-                        design_m3h = design_m3s * 3600  # Convert to m³/h
                         
                         extract_table.cell(row_idx + 1, 0).text = f"M{row_idx + 1}"
                         extract_table.cell(row_idx + 1, 1).text = f"{section_data.get('anemometer', 0.0):.2f} m/s"
@@ -2189,11 +2186,10 @@ def create_testing_commissioning_report(data):
                 supply_info_table.cell(2, 1).text = canopy.get('model', '')
                 # Get supply data first
                 supply_data = canopy.get('supply_data', [])
-                # Sum design flowrates from all modules (convert from L/s to m³/s)
+                # Sum design flowrates from all modules (in L/s)
                 total_supply_design_ls = sum(module.get('design_flowrate_ls', 0.0) for module in supply_data)
-                total_supply_design_m3s = total_supply_design_ls / 1000  # Convert L/s to m³/s
                 supply_info_table.cell(3, 0).text = "Design Flowrate"
-                supply_info_table.cell(3, 1).text = f"{total_supply_design_m3s:.2f} m³/s"
+                supply_info_table.cell(3, 1).text = f"{total_supply_design_ls:.0f} L/s"
                 supply_info_table.cell(4, 0).text = "Quantity of Canopy Sections"
                 supply_info_table.cell(4, 1).text = str(canopy.get('modules', 1))
                 supply_info_table.cell(5, 0).text = "Calculation"
@@ -2352,7 +2348,7 @@ def create_testing_commissioning_report(data):
 
 def main():
     # Check for shared form data in URL parameters
-    query_params = st.experimental_get_query_params()
+    query_params = st.query_params
     
     # Debug: Show what parameters we have
     if query_params:
@@ -2529,7 +2525,8 @@ def main():
                     # Check if model has supply (F models or CMW-MUAP-CJ) - use the most current value
                     current_canopy_model = st.session_state.get(f"model_{i}", st.session_state.canopy_data[i].get('model', ''))
                     # Models with supply: all F models plus CMW-MUAP-CJ
-                    has_supply = ('F' in current_canopy_model or current_canopy_model == 'CMW-MUAP-CJ') if current_canopy_model else False
+                    # Check if model has supply air (not currently used but may be needed for future features)
+                    # has_supply = ('F' in current_canopy_model or current_canopy_model == 'CMW-MUAP-CJ') if current_canopy_model else False
                     
                     # Initialize module data
                     while len(st.session_state.canopy_data[i]['extract_data']) < num_modules:
@@ -3227,7 +3224,7 @@ def main():
                                     # Store previous state to detect changes
                                     previous_marvel_state = equipment.get('with_marvel', False)
                                     
-                                    with_marvel = st.checkbox(
+                                    st.checkbox(
                                         "With Marvel System",
                                         key=marvel_key
                                     )
@@ -3335,7 +3332,7 @@ def main():
             st.session_state.work_performed_list.pop(index)
         
         # Add new work performed button
-        col_add1, col_add2 = st.columns([1, 3])
+        col_add1, _ = st.columns([1, 3])
         with col_add1:
             if st.button("➕ Add Work Item", type="secondary", key="add_work_performed_btn"):
                 add_work_performed()
@@ -3350,7 +3347,7 @@ def main():
                 if title_key not in st.session_state:
                     st.session_state[title_key] = work_item.get('title', f'Work Performed {i+1}')
                 
-                title = st.text_input(
+                st.text_input(
                     f"Work Title {i+1}",
                     key=title_key,
                     placeholder="Title of work performed"
@@ -3362,7 +3359,7 @@ def main():
                 if desc_key not in st.session_state:
                     st.session_state[desc_key] = work_item.get('description', '')
                 
-                description = st.text_area(
+                st.text_area(
                     f"Work Description {i+1}*",
                     key=desc_key,
                     placeholder="Describe the work performed (e.g., Replaced filters, Cleaned hood system, etc.)",
@@ -3391,7 +3388,7 @@ def main():
                             default_desc = f"{work_item.get('title', f'Work Item {i+1}')} - Photo {j+1}"
                             st.session_state[photo_desc_key] = work_item.get('photo_descriptions', {}).get(str(j), default_desc)
                         
-                        photo_desc = st.text_input(
+                        st.text_input(
                             f"Description for Photo {j+1}",
                             key=photo_desc_key,
                             placeholder="Brief description of what this photo shows"
@@ -3442,7 +3439,7 @@ def main():
         st.session_state.spare_parts.pop(index)
     
     # Add new spare part button
-    col_add1, col_add2 = st.columns([1, 3])
+    col_add1, _ = st.columns([1, 3])
     with col_add1:
         if st.button("➕ Add Spare Part", type="secondary", key="add_spare_part_btn"):
             add_spare_part()
