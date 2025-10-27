@@ -2801,7 +2801,6 @@ def main():
                                     help="Number of KSA filters for this module",
                                     on_change=lambda idx=i, jdx=j: st.session_state.canopy_data[idx]['extract_data'][jdx].update({'num_ksa_filters': st.session_state[f"ksa_filters_{idx}_{jdx}"]})
                                 )
-                                num_ksa_filters = st.session_state.canopy_data[i]['extract_data'][j].get('num_ksa_filters', 1)
                             
                             with col2:
                                 # Design flowrate input in L/s
@@ -2826,29 +2825,33 @@ def main():
                                     on_change=lambda idx=i, jdx=j: st.session_state.canopy_data[idx]['extract_data'][jdx].update({'tab_reading': st.session_state[f"extract_tab_{idx}_{jdx}"]})
                                 )
                             
-                            # Get automatic K-Factor based on this module's number of filters
-                            # Use the most current value
+                            # Get K-Factor - editable by user
+                            # Use the current stored value or default to auto-calculated value
                             current_ksa = st.session_state.canopy_data[i]['extract_data'][j].get('num_ksa_filters', 1)
-                            auto_k_factor_extract = get_extract_k_factor(current_ksa, canopy_model, has_uv)
-                            
+                            default_k_factor_extract = get_extract_k_factor(current_ksa, canopy_model, has_uv)
+                            current_k_factor = st.session_state.canopy_data[i]['extract_data'][j].get('k_factor', default_k_factor_extract)
+
                             with col4:
-                                # Display auto-calculated K-Factor (read-only)
-                                st.text_input(
+                                # Editable K-Factor input
+                                user_k_factor_extract = st.number_input(
                                     "K-Factor (m³/h)",
-                                    value=f"{auto_k_factor_extract:.1f}",
-                                    disabled=True,
-                                    key=f"extract_k_display_{i}_{j}",
-                                    help=f"Auto-calculated based on {num_ksa_filters} KSA filter(s)"
+                                    value=float(current_k_factor),
+                                    min_value=0.0,
+                                    step=0.1,
+                                    format="%.1f",
+                                    key=f"extract_k_factor_{i}_{j}",
+                                    help="Enter K-Factor manually or use default calculated value",
+                                    on_change=lambda idx=i, jdx=j: st.session_state.canopy_data[idx]['extract_data'][jdx].update({'k_factor': st.session_state[f"extract_k_factor_{idx}_{jdx}"]})
                                 )
                                 # Store the K-Factor in data
-                                st.session_state.canopy_data[i]['extract_data'][j]['k_factor'] = auto_k_factor_extract
+                                st.session_state.canopy_data[i]['extract_data'][j]['k_factor'] = user_k_factor_extract
                             
                             # Calculate flowrates
                             # Use the most current values
                             current_tab = st.session_state.canopy_data[i]['extract_data'][j].get('tab_reading', 0.0)
-                            if current_tab > 0 and auto_k_factor_extract > 0:
+                            if current_tab > 0 and user_k_factor_extract > 0:
                                 import math
-                                flowrate_m3h = auto_k_factor_extract * math.sqrt(current_tab)
+                                flowrate_m3h = user_k_factor_extract * math.sqrt(current_tab)
                                 flowrate_m3s = flowrate_m3h / 3600
                                 st.session_state.canopy_data[i]['extract_data'][j]['flowrate_m3h'] = flowrate_m3h
                                 st.session_state.canopy_data[i]['extract_data'][j]['flowrate_m3s'] = flowrate_m3s
@@ -2911,7 +2914,6 @@ def main():
                                 help="Hood length for this module",
                                 on_change=lambda idx=i, jdx=j: st.session_state.canopy_data[idx]['supply_data'][jdx].update({'hood_length': st.session_state[f"hood_length_{idx}_{jdx}"]})
                             )
-                            hood_length = st.session_state.canopy_data[i]['supply_data'][j].get('hood_length', 1.0)
                         
                         with col2:
                             # Design flowrate input in L/s
@@ -2936,27 +2938,32 @@ def main():
                                 on_change=lambda idx=i, jdx=j: st.session_state.canopy_data[idx]['supply_data'][jdx].update({'tab_reading': st.session_state[f"supply_tab_{idx}_{jdx}"]})
                             )
                         
-                        # Get automatic K-Factor based on this module's hood length
+                        # Get K-Factor - editable by user
+                        # Use the current stored value or default to auto-calculated value
                         current_hood_length = st.session_state.canopy_data[i]['supply_data'][j].get('hood_length', 1.0)
-                        auto_k_factor_supply = get_supply_k_factor(current_hood_length)
-                        
+                        default_k_factor_supply = get_supply_k_factor(current_hood_length)
+                        current_k_factor_supply = st.session_state.canopy_data[i]['supply_data'][j].get('k_factor', default_k_factor_supply)
+
                         with col4:
-                            # Display auto-calculated K-Factor (read-only)
-                            st.text_input(
+                            # Editable K-Factor input
+                            user_k_factor_supply = st.number_input(
                                 "K-Factor (m³/h)",
-                                value=f"{auto_k_factor_supply:.1f}",
-                                disabled=True,
-                                key=f"supply_k_display_{i}_{j}",
-                                help=f"Auto-calculated based on {hood_length:.1f}m hood length"
+                                value=float(current_k_factor_supply),
+                                min_value=0.0,
+                                step=0.1,
+                                format="%.1f",
+                                key=f"supply_k_factor_{i}_{j}",
+                                help="Enter K-Factor manually or use default calculated value",
+                                on_change=lambda idx=i, jdx=j: st.session_state.canopy_data[idx]['supply_data'][jdx].update({'k_factor': st.session_state[f"supply_k_factor_{idx}_{jdx}"]})
                             )
                             # Store the K-Factor in data
-                            st.session_state.canopy_data[i]['supply_data'][j]['k_factor'] = auto_k_factor_supply
+                            st.session_state.canopy_data[i]['supply_data'][j]['k_factor'] = user_k_factor_supply
                         
                         # Calculate flowrates
                         current_supply_tab = st.session_state.canopy_data[i]['supply_data'][j].get('tab_reading', 0.0)
-                        if current_supply_tab > 0 and auto_k_factor_supply > 0:
+                        if current_supply_tab > 0 and user_k_factor_supply > 0:
                             import math
-                            flowrate_m3h = auto_k_factor_supply * math.sqrt(current_supply_tab)
+                            flowrate_m3h = user_k_factor_supply * math.sqrt(current_supply_tab)
                             flowrate_m3s = flowrate_m3h / 3600
                             st.session_state.canopy_data[i]['supply_data'][j]['flowrate_m3h'] = flowrate_m3h
                             st.session_state.canopy_data[i]['supply_data'][j]['flowrate_m3s'] = flowrate_m3s
